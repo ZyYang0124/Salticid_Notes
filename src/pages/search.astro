@@ -35,7 +35,6 @@ import { withBase } from '../lib/privacy';
   interface SearchIndex {
     observations: IndexItem[];
     species: IndexItem[];
-    trips: IndexItem[];
     posts?: IndexItem[];
   }
 
@@ -47,7 +46,7 @@ import { withBase } from '../lib/privacy';
     resultsEl.dataset.init = '1';
 
     const BASE = import.meta.env.BASE_URL;
-    let index: SearchIndex = { observations: [], species: [], trips: [] };
+    let index: SearchIndex = { observations: [], species: [], posts: [] };
 
     function rowOf(item: IndexItem): string {
       const thumb = item.thumb
@@ -68,8 +67,7 @@ import { withBase } from '../lib/privacy';
       const sections: [string, IndexItem[]][] = [
         ['观察记录', index.observations.filter(match)],
         ['物种', index.species.filter(match)],
-        ['野外调查', index.trips.filter(match)],
-        ['观察博文', (index.posts ?? []).filter(match)],
+        ['札记', (index.posts ?? []).filter(match)],
       ];
       const html = sections
         .filter(([, items]) => items.length > 0)
@@ -89,7 +87,7 @@ import { withBase } from '../lib/privacy';
     fetch(`${BASE}data/search-index.json`)
       .then((r) => r.json())
       .then((data: SearchIndex) => {
-        index = data;
+        index = { observations: data.observations ?? [], species: data.species ?? [], posts: data.posts ?? [] };
         render(input.value);
       })
       .catch(() => {

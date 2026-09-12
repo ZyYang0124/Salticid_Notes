@@ -1,0 +1,4 @@
+UPDATE posts SET body_md = REPLACE(body_md, 'media:SFN-M-000071' || char(10), '') WHERE slug = 'note-010';
+UPDATE posts SET body_md = REPLACE(body_md, 'media:SFN-M-000071', '') WHERE slug = 'note-010' AND body_md LIKE '%media:SFN-M-000071%';
+UPDATE posts SET body_md = REPLACE(body_md, 'media:SFN-M-000003', 'media:SN-2026-00004'), body_html = REPLACE(body_html, 'media:SFN-M-000003', 'media:SN-2026-00004') WHERE slug = 'note-001';
+UPDATE posts SET body_md = REPLACE(body_md, 'media:SFN-M-000004', 'media:SN-2026-00005'), body_html = REPLACE(body_html, 'media:SFN-M-000004', 'media:SN-2026-00005') WHERE slug = 'note-001';

@@ -208,7 +208,7 @@ const gallery = obs.media.filter((m) => m.id !== obs.cover?.id);
   {/* 原图灯箱（§58 点击 contain 查看完整原图） */}
   <div class="lightbox" id="hero-lightbox" role="dialog" aria-modal="true" aria-label="原始照片">
     <button class="close" type="button" aria-label="关闭">×</button>
-    {obs.cover && <img src={obs.cover.large} alt={obs.cover.caption ?? obs.public_id} />}
+    {obs.cover && <img src={obs.cover.large} alt={obs.cover.caption ?? obs.public_id} loading="lazy" />}
     <div class="cap">
       <span class="text">{obs.cover?.caption ?? ''}</span>
       <span class="who">© {obs.cover?.photographer ?? ''}</span>

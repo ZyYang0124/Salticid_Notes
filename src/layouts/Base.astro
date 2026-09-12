@@ -33,6 +33,15 @@ const nav = [
 <!doctype html>
 <html lang="zh-CN">
   <head>
+    <script is:inline>
+      (function () {
+        try {
+          var t = localStorage.getItem('theme');
+          if (!t) t = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+          document.documentElement.dataset.theme = t;
+        } catch (e) {}
+      })();
+    </script>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>{pageTitle}</title>
@@ -76,6 +85,7 @@ const nav = [
           ))}
         </nav>
         <SearchBox />
+        <button class="theme-toggle" type="button" data-theme-toggle aria-label="切换白天/夜间模式"></button>
         <button class="menu-btn" type="button" aria-label="打开菜单" aria-expanded="false" data-menu-open>
           <svg width="22" height="22" viewBox="0 0 22 22" fill="none" aria-hidden="true">
             <path d="M3 6h16M3 11h16M3 16h16" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" />
@@ -147,6 +157,32 @@ const nav = [
       });
     }
     document.addEventListener('astro:page-load', initMenu);
+
+    // 主题切换：白天/夜间，localStorage 记忆，ClientRouter 导航后保持
+    function applyTheme(t) { document.documentElement.dataset.theme = t; }
+    function initThemeToggle() {
+      const btn = document.querySelector('[data-theme-toggle]');
+      if (!btn || btn.dataset.init === '1') return;
+      btn.dataset.init = '1';
+      const render = () => {
+        const dark = document.documentElement.dataset.theme === 'dark';
+        btn.textContent = dark ? '☀' : '☽';
+        btn.setAttribute('aria-label', dark ? '切换到白天模式' : '切换到夜间模式');
+      };
+      btn.addEventListener('click', () => {
+        const next = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
+        applyTheme(next);
+        try { localStorage.setItem('theme', next); } catch (e) {}
+        render();
+      });
+      document.addEventListener('astro:after-swap', () => {
+        applyTheme(document.documentElement.dataset.theme || 'light');
+        render();
+      });
+      render();
+    }
+    initThemeToggle();
+    document.addEventListener('astro:after-swap', initThemeToggle);
 
     // Scroll Reveal：进入视口一次上浮，不做重复动画；reduced-motion 时直接可见。
     function initReveal() {

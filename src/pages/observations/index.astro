@@ -153,25 +153,25 @@ const tripOptions = uniq(obs.map((o) => o.trip?.title ?? ''));
   .filter-bar select {
     font: inherit; font-size: 13px; color: var(--ink);
     padding: 6px 8px; border: 1px solid var(--line); border-radius: 8px;
-    background: #fff; max-width: 210px;
+    background: var(--surface); max-width: 210px;
   }
   #f-q {
     font: inherit; font-size: 13.5px; color: var(--ink);
     padding: 7px 12px; border: 1px solid var(--line); border-radius: 8px;
-    background: #fff; width: 220px;
+    background: var(--surface); width: 220px;
   }
   #f-q:focus, .filter-bar select:focus { outline: none; border-color: var(--terra); }
   .f-more { position: relative; }
   .f-more summary {
     font-size: 13px; color: var(--muted); cursor: pointer; list-style: none;
-    padding: 7px 12px; border: 1px solid var(--line); border-radius: 8px; background: #fff;
+    padding: 7px 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface);
   }
   .f-more summary::-webkit-details-marker { display: none; }
   .f-more[open] summary { border-color: var(--faint); color: var(--ink); }
   .f-more-panel {
     position: absolute; z-index: 20; top: calc(100% + 8px); left: 0;
     display: flex; flex-direction: column; gap: 8px;
-    background: #fff; border: 1px solid var(--line); border-radius: 10px;
+    background: var(--surface); border: 1px solid var(--line); border-radius: 10px;
     padding: 14px; box-shadow: 0 8px 28px rgba(38,34,28,0.08); min-width: 240px;
   }
   .filter-bar select:focus { outline: none; border-color: var(--terra); }

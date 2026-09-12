@@ -36,6 +36,7 @@
   --accent-muted: #8a9377;
   --terra: #a4552f;
   --paper-on-dark: #f5f2ea;
+  --surface: #ffffff;
 
   /* ---- 字体 ---- */
   --serif: Georgia, "Times New Roman", "Songti SC", "Noto Serif SC", SimSun, serif;
@@ -146,11 +147,12 @@ a:hover { color: var(--terra); }
   width: 44px; height: 44px; align-items: center; justify-content: center;
   color: var(--ink);
 }
-.menu-btn svg { display: block; }
-.mobile-nav {
-  display: none; position: fixed; inset: 0; z-index: 90;
-  background: var(--paper); padding: 90px 32px 40px;
+.theme-toggle {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 38px; height: 38px; background: none; border: none;
+  cursor: pointer; color: var(--muted); font-size: 18px; line-height: 1;
 }
+.theme-toggle:hover { color: var(--terra); }
 .mobile-nav.open { display: block; }
 .mobile-nav a {
   display: block; font-family: var(--serif); font-size: 24px; letter-spacing: 0.06em;
@@ -207,9 +209,9 @@ a:hover { color: var(--terra); }
   display: inline-block; padding: 9px 20px; font-size: 13.5px; letter-spacing: 0.08em;
   border: 1px solid rgba(245, 242, 234, 0.55); color: var(--paper-on-dark); transition: color var(--motion-fast) ease, background-color var(--motion-fast) ease, border-color var(--motion-fast) ease;
 }
-.btn:hover { background: rgba(245, 242, 234, 0.12); color: #fff; }
+.btn:hover { background: rgba(245, 242, 234, 0.12); color: var(--paper-on-dark); }
 .btn.solid { background: var(--paper-on-dark); color: var(--ink); border-color: var(--paper-on-dark); }
-.btn.solid:hover { background: #fff; color: var(--accent-deep); }
+.btn.solid:hover { background: var(--paper); color: var(--accent-deep); }
 
 /* ---------- 区块 ---------- */
 
@@ -341,7 +343,7 @@ a:hover { color: var(--terra); }
 .lightbox .cap { color: #d8d3c7; font-size: 14px; margin-top: 14px; text-align: center; }
 .lightbox .cap .who { color: #97907f; font-size: 12.5px; display: block; margin-top: 2px; }
 .lightbox button { position: absolute; background: none; border: none; color: #d8d3c7; font-size: 30px; cursor: pointer; padding: 12px; line-height: 1; }
-.lightbox button:hover { color: #fff; }
+.lightbox button:hover { color: var(--paper-on-dark); }
 .lightbox .close { top: 14px; right: 18px; }
 .lightbox .prev { left: 12px; top: 50%; transform: translateY(-50%); }
 .lightbox .next { right: 12px; top: 50%; transform: translateY(-50%); }
@@ -484,7 +486,7 @@ a.place-card { color: inherit; text-decoration: none; }
 
 /* ---------- 搜索 ---------- */
 
-.search-box { max-width: 640px; margin: 8px 0 8px; display: flex; border: 1px solid var(--line); background: #fff; }
+.search-box { max-width: 640px; margin: 8px 0 8px; display: flex; border: 1px solid var(--line); background: var(--surface); }
 .search-box input { flex: 1; border: none; outline: none; padding: 12px 16px; font-size: 15px; background: transparent; color: var(--ink); font-family: var(--sans); }
 .search-box .hint { padding: 12px 16px 12px 0; font-size: 12px; color: var(--faint); }
 .search-results { padding: 26px 0 60px; }
@@ -565,3 +567,29 @@ a.place-card { color: inherit; text-decoration: none; }
   .place-card:hover img, .trip-card:hover .cover img, .gallery figure:hover img { transform: none; }
   .obs-card:hover, .ed-card:hover, .place-card:hover, .species-card:hover, .trip-card:hover { transform: none; }
 }
+
+
+/* ---------- 夜间模式（data-theme="dark"）：暖夜纸 ---------- */
+[data-theme="dark"] {
+  --paper: #16140f;
+  --paper-soft: #1d1a14;
+  --paper-deep: #262218;
+  --ink: #eae5d8;
+  --muted: #a89e8c;
+  --faint: #7d7568;
+  --line: #3a352a;
+  --line-soft: #2c281f;
+  --accent: #97a184;
+  --accent-deep: #b3bfa0;
+  --accent-muted: #6f7a5c;
+  --terra: #d18a5f;
+  --surface: #201d16;
+  color-scheme: dark;
+}
+
+[data-theme="dark"] ::view-transition-old(root),
+[data-theme="dark"] ::view-transition-new(root) { animation-duration: 120ms; }
+
+/* 夜间模式下图片稍微降亮度，避免刺眼（不做滤镜破坏色彩，仅亮度/对比微调可逆） */
+[data-theme="dark"] img { filter: brightness(0.88); }
+[data-theme="dark"] .hero-photo { filter: none; }
