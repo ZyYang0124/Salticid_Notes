@@ -31,7 +31,7 @@ import { esc, loginPage, mediaPage, noteEditorHtml, obsEditorHtml, page, STYLES,
 import { invitePage } from './invites';
 import { OBS_EDITOR_SCRIPT, NOTE_EDITOR_SCRIPT, LOGIN_SCRIPT, PROFILE_SCRIPT } from './editorjs';
 import { allTaxonOptions, createWorkingTaxon, findTaxonOptionBySlug, mergeWorkingTaxon, renameWorkingTaxon } from './taxa';
-import { validateFormalName } from './wsc';
+import { suggestGenera, suggestSpecies, validateFormalName } from './wsc';
 
 const app = new Hono<{ Bindings: Env; Variables: { user: StudioUser } }>();
 
@@ -776,8 +776,8 @@ app.post('/studio/api/profile', async (c) => {
 app.post('/studio/api/taxa', async (c) => {
   const u = user(c);
   if (!sameOrigin(c.req.raw)) return c.json({ error: 'Forbidden' }, 403);
-  const b = (await c.req.json().catch(() => ({}))) as { name?: string };
-  const res = await createWorkingTaxon(c.env, String(b.name ?? ''), u.display_name);
+  const b = (await c.req.json().catch(() => ({}))) as { name?: string; chinese_name?: string };
+  const res = await createWorkingTaxon(c.env, String(b.name ?? ''), u.display_name, b.chinese_name ?? null);
   if (!res.ok) return c.json({ error: res.error }, res.status as 400 | 409);
   if (res.created) {
     await audit(c.env, u.display_name, 'taxon', res.taxon.slug, 'working-taxon.created', { name: res.taxon.name });
@@ -786,6 +786,17 @@ app.post('/studio/api/taxa', async (c) => {
 });
 
 // ---------- 工作编号管理（分类学变动流）：改名 / 合并 ----------
+
+// WSC 输入预测（§22/§24）：属前缀 → 属列表；属名 → 该属 ACCEPTED 种列表
+app.get('/studio/api/wsc/complete', async (c) => {
+  user(c);
+  const type = c.req.query('type') === 'species' ? 'species' : 'genus';
+  const q = (c.req.query('q') ?? '').trim().slice(0, 60);
+  if (q.length < 2) return c.json({ ok: true, items: [] });
+  const items = type === 'genus' ? await suggestGenera(c.env, q) : await suggestSpecies(c.env, q);
+  if (items === null) return c.json({ ok: false, unreachable: true, items: [] });
+  return c.json({ ok: true, items });
+});
 
 app.patch('/studio/api/taxa/:slug', async (c) => {
   const u = user(c);

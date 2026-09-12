@@ -5,6 +5,7 @@
 //   - 周期重校验（cron）检测 WSC 端分类学变动，写入 wsc_findings 供数据质量页呈现。
 // 注意：WSC 检索为模糊匹配，一切判定必须精确比对解析出的名字；网络不可达时降级放行（不阻塞野外记录）。
 import { get, run, type Env } from './db';
+import catalogJson from './wsc-genera.json';
 
 const UA = 'SalticidNotes-Studio/1.0 (nature journal; +https://salticidnotes.cn)';
 const TTL_DAYS = 30;
@@ -129,4 +130,61 @@ export async function validateFormalName(env: Env, display: string): Promise<Wsc
   verdict.speciesKnown = s.exists;
   verdict.speciesStatus = s.status;
   return verdict;
+}
+
+
+// ---------- 输入预测（typeahead）：属前缀 → 属列表；属名 → 该属 ACCEPTED 种列表 ----------
+
+interface CacheRow { name: string; payload: string; checked_at: string }
+
+async function cachedPayload(env: Env, key: string, ttlDays: number): Promise<unknown | null> {
+  const row = await get<CacheRow>(
+    env.DB,
+    `SELECT payload, checked_at FROM wsc_cache WHERE name = ? AND checked_at > datetime('now', '-${ttlDays} days')`,
+    key,
+  );
+  if (!row) return null;
+  try { return JSON.parse(row.payload); } catch { return null; }
+}
+
+async function savePayload(env: Env, key: string, payload: unknown): Promise<void> {
+  await run(
+    env.DB,
+    `INSERT INTO wsc_cache (name, kind, exists_wsc, status, payload, checked_at) VALUES (?,?,1,NULL,?,datetime('now'))
+     ON CONFLICT(name) DO UPDATE SET kind = excluded.kind, payload = excluded.payload, checked_at = excluded.checked_at`,
+    key, 'complete', JSON.stringify(payload),
+  );
+}
+
+export interface GenusSuggestion { name: string; author: string | null }
+
+const GENUS_CATALOG: string[] = (catalogJson as { genera: string[] }).genera;
+
+/** 属名前缀预测：本地跳蛛科全属目录（引导自 Wikidata/WSC，年度更新），即时返回 */
+export async function suggestGenera(env: Env, prefix: string): Promise<GenusSuggestion[] | null> {
+  const lower = prefix.toLowerCase();
+  const starts = GENUS_CATALOG.filter((g) => g.toLowerCase().startsWith(lower));
+  const contains = GENUS_CATALOG.filter(
+    (g) => !g.toLowerCase().startsWith(lower) && g.toLowerCase().includes(lower),
+  ).slice(0, 12);
+  return [...starts, ...contains].slice(0, 20).map((name) => ({ name, author: null }));
+}
+
+export interface SpeciesSuggestion { epithet: string; status: string }
+
+/** 属下物种预测：返回该属全部组合及状态（客户端过滤 ACCEPTED），WSC 不可达返回 null */
+export async function suggestSpecies(env: Env, genus: string): Promise<SpeciesSuggestion[] | null> {
+  const key = 'complete:species:' + genus.toLowerCase();
+  const hit = await cachedPayload(env, key, 14);
+  if (hit) return hit as SpeciesSuggestion[];
+  const html = await fetchWsc(`/search?searchType=genus&query=${encodeURIComponent(genus)}`);
+  if (html == null) return null;
+  const combos = [
+    ...html.matchAll(/<em>([A-Za-z][a-z-]+)\s+([a-z-]+)<\/em>\s*[^-]*-\s*<span[^>]*>\s*([A-Z]+)/g),
+  ]
+    .filter((m) => m[1].toLowerCase() === genus.toLowerCase())
+    .map((m) => ({ epithet: m[2], status: m[3] }));
+  const out = combos.length ? combos : null;
+  if (out) await savePayload(env, key, out);
+  return out;
 }

@@ -151,7 +151,7 @@ export type CreateTaxonResult =
   | { ok: false; error: string; status: number };
 
 /** 建立（或复用）工作编号；与正式类群重名时拒绝 */
-export async function createWorkingTaxon(env: Env, rawName: string, actor: string): Promise<CreateTaxonResult> {
+export async function createWorkingTaxon(env: Env, rawName: string, actor: string, chineseName?: string | null): Promise<CreateTaxonResult> {
   const name = rawName.trim().replace(/\s+/g, ' ');
   if (!NAME_RE.test(name)) {
     return { ok: false, status: 400, error: '工作编号需为字母开头的学名或编号（可含 cf. / aff. / sp. 等限定词）' };
@@ -169,14 +169,16 @@ export async function createWorkingTaxon(env: Env, rawName: string, actor: strin
       taxon: { slug: existing.slug, name: existing.scientific_name, cn: existing.chinese_name, rank: existing.rank, working: true },
     };
   }
+  const cn = chineseName ? String(chineseName).trim().slice(0, 60) || null : null;
   await run(
     env.DB,
-    'INSERT INTO working_taxa (slug, scientific_name, rank, status, created_by) VALUES (?,?,?,?,?)',
+    'INSERT INTO working_taxa (slug, scientific_name, rank, status, chinese_name, created_by) VALUES (?,?,?,?,?,?)',
     slug,
     name,
     'species',
     'working',
+    cn,
     actor,
   );
-  return { ok: true, created: true, taxon: { slug, name, cn: null, rank: 'species', working: true } };
+  return { ok: true, created: true, taxon: { slug, name, cn, rank: 'species', working: true } };
 }

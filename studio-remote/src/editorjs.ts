@@ -322,14 +322,14 @@ const OBS_EDITOR_JS = `
   updateActions();
   $all('[data-field]').forEach(function (el) { el.addEventListener('input', scheduleSave); });
 
-  // ---- 物种选择器 ----
+  // ---- 物种选择器：本地类群 + WSC 预测（属→种级联 + 中文名）----
   var spInput = $('#species-search'), pop = $('#species-pop'), wrap = $('#species-wrap');
   renderChosen();
+  function escHtml(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
   function fmtName(t) {
     return t.cn ? '<span class="cn">' + escHtml(t.cn) + '</span><span class="sn">' + escHtml(t.name) + (t.rank !== 'species' && t.rank !== 'subspecies' ? ' sp.' : '') + '</span>'
                 : '<span class="cn" style="font-style:italic">' + escHtml(t.name) + '</span>';
   }
-  function escHtml(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
   function searchTaxa(q) {
     q = q.trim().toLowerCase();
     var list = boot.taxa || [];
@@ -365,53 +365,161 @@ const OBS_EDITOR_JS = `
       spInput.style.display = '';
     }
   }
-  function openPop(q) {
-    q = (q || '').trim();
+
+  // ---- WSC 预测：属前缀 → 属列表；属名 → 该属 ACCEPTED 种列表（D1 缓存于服务端）----
+  var wscCache = {}, wscTimer = null;
+  function fetchWsc(type, q, cb) {
+    var key = type + ':' + q.toLowerCase();
+    if (wscCache[key] !== undefined) { cb(wscCache[key]); return; }
+    clearTimeout(wscTimer);
+    wscTimer = setTimeout(function () {
+      fetch('/studio/api/wsc/complete?type=' + type + '&q=' + encodeURIComponent(q))
+        .then(function (r) { return r.json().catch(function () { return null; }); })
+        .then(function (j) {
+          var items = (j && j.ok && j.items) ? j.items : [];
+          wscCache[key] = items;
+          cb(items);
+        })
+        .catch(function () { cb([]); });
+    }, 320);
+  }
+  function ensureWorkingTaxon(name, cn, cb) {
+    var known = boot.taxa.filter(function (t) { return t.name.toLowerCase() === name.toLowerCase(); })[0];
+    if (known) { cb(known); return; }
+    fetch('/studio/api/taxa', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      credentials: 'same-origin',
+      body: JSON.stringify({ name: name, chinese_name: cn || null })
+    }).then(readJson).then(function (j) {
+      if (j && j.ok) {
+        if (!boot.taxa.some(function (t) { return t.slug === j.taxon.slug; })) boot.taxa.push(j.taxon);
+        cb(j.taxon);
+      } else cb(null);
+    }).catch(function () { cb(null); });
+  }
+  function chooseTaxon(t) {
+    window.__chosenSlug = t.slug;
+    pop.classList.remove('open');
+    if (t.rank === 'genus') {
+      spInput.value = t.name + ' ';
+      window.__chosenSlug = t.slug;
+      renderChosen();
+      scheduleSave();
+      openPop(spInput.value);
+      spInput.focus();
+      return;
+    }
+    spInput.value = '';
+    renderChosen();
+    scheduleSave();
+  }
+
+  window.__spLog = [];
+  function openPop(rawQ) {
+    var raw = (rawQ || '');
+    var hasSpace = /\\s/.test(raw); // 尾随空格 = 显式进入种级联
+    var q = raw.replace(/\s+$/, '');
+    if (hasSpace && !q) { pop.classList.remove('open'); return; }
     var list = searchTaxa(q);
-    var qLower = q.toLowerCase();
+    var qLower = q.trim().toLowerCase();
     var exact = q && list.some(function (t) { return t.name.toLowerCase() === qLower; });
-    // 与正式类群重名的输入不提供建立入口（服务端也会拒绝）；形如学名的输入才提示
-    // 模板字符串里正则不能写 \-（转义被吃掉形成非法区间，整个脚本解析失败）；连字符放类尾
-    var nameLike = /^[A-Za-z][A-Za-z. -]{1,79}$/.test(q);
+    var nameLike = /^[A-Za-z][A-Za-z. -]{1,79}$/.test(q.trim());
     var createOpt = q && nameLike && !exact
-      ? '<div class="opt place-new" data-new-taxon="1">＋ 建立工作编号「' + escHtml(q) + '」</div>'
+      ? '<div class="opt place-new" data-new-taxon="1">＋ 建立工作编号「' + escHtml(q.trim()) + '」</div>'
       : '';
-    if (!list.length && !createOpt) { pop.innerHTML = '<div class="none">没有匹配的物种——留空即记为未鉴定</div>'; }
-    else pop.innerHTML = list.map(function (t, i) { return '<div class="opt" data-slug="' + escHtml(t.slug) + '">' + fmtName(t) + '</div>'; }).join('') + createOpt;
-    pop.classList.add('open');
-    Array.prototype.slice.call(pop.querySelectorAll('.opt[data-slug]')).forEach(function (el) {
-      el.addEventListener('mousedown', function (e) {
-        e.preventDefault();
-        window.__chosenSlug = el.getAttribute('data-slug');
-        pop.classList.remove('open');
-        spInput.value = '';
-        renderChosen();
-        scheduleSave();
-      });
-    });
-    Array.prototype.slice.call(pop.querySelectorAll('[data-new-taxon]')).forEach(function (el) {
-      el.addEventListener('mousedown', function (e) {
-        e.preventDefault();
-        var name = spInput.value.trim();
-        if (!name) return;
-        setStatus('正在建立工作编号…');
-        fetch('/studio/api/taxa', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          credentials: 'same-origin',
-          body: JSON.stringify({ name: name })
-        }).then(readJson).then(function (j) {
-          if (!j || !j.ok) { setStatus((j && j.error) || '无法建立工作编号', true); return; }
-          if (!boot.taxa.some(function (t) { return t.slug === j.taxon.slug; })) boot.taxa.push(j.taxon);
-          window.__chosenSlug = j.taxon.slug;
+    var localHtml = list.map(function (t) { return '<div class="opt" data-slug="' + escHtml(t.slug) + '">' + fmtName(t) + '</div>'; }).join('');
+
+    function finishRender(wscSection) {
+      pop.innerHTML = localHtml + (wscSection || '') + createOpt;
+      pop.classList.add('open');
+      Array.prototype.slice.call(pop.querySelectorAll('.opt[data-slug]')).forEach(function (el) {
+        el.addEventListener('mousedown', function (e) {
+          e.preventDefault();
+          var slug = el.getAttribute('data-slug');
+          var t = (boot.taxa || []).filter(function (x) { return x.slug === slug; })[0];
+          if (t && t.rank === 'genus' && !hasSpace) { chooseTaxon(t); return; }
+          window.__chosenSlug = slug;
           pop.classList.remove('open');
           spInput.value = '';
           renderChosen();
-          setStatus(j.created ? '已建立工作编号「' + j.taxon.name + '」——存疑鉴定同样有效，随时可改为正式类群' : '已选择既有工作编号');
           scheduleSave();
-        }).catch(function () { setStatus('无法建立工作编号（网络错误）', true); });
+        });
       });
-    });
+      Array.prototype.slice.call(pop.querySelectorAll('[data-new-taxon]')).forEach(function (el) {
+        el.addEventListener('mousedown', function (e) {
+          e.preventDefault();
+          var name = spInput.value.trim();
+          if (!name) return;
+          var cn = /[\u4e00-\u9fa5]/.test(name) ? name : null;
+          if (cn) { setStatus('中文名请在选定学名后补充，或到「类群管理」维护', true); return; }
+          createWorkingAndSelect(name, null);
+        });
+      });
+    }
+    function createWorkingAndSelect(name, cn) {
+      setStatus('正在登记「' + name + '」…');
+      ensureWorkingTaxon(name, cn, function (t) {
+        if (!t) { setStatus('无法登记工作编号', true); return; }
+        window.__chosenSlug = t.slug;
+        pop.classList.remove('open');
+        spInput.value = '';
+        renderChosen();
+        setStatus('已登记「' + name + '」');
+        scheduleSave();
+      });
+    }
+
+    if (!list.length && !createOpt && !hasSpace) {
+      pop.innerHTML = '<div class="none">没有匹配——继续输入将查询 WSC 属名</div>';
+      pop.classList.add('open');
+    }
+
+    if (hasSpace) {
+      // 属已定 → 种级联：WSC 该属 ACCEPTED 种
+      var genus = q.split(/\\s+/)[0];
+      fetchWsc('species', genus, function (items) {
+        if (!items || !items.length) { finishRender('<div class="none wsc-none">WSC 查无更多匹配</div>'); return; }
+        var accepted = items.filter(function (i2) { return i2.status === 'ACCEPTED'; });
+        var rows = accepted.map(function (i2) {
+          var full = genus + ' ' + i2.epithet;
+          return '<div class="opt" data-wscname="' + escHtml(full) + '"><span class="cn" style="font-style:italic">' + escHtml(genus) + ' ' + escHtml(i2.epithet) + '</span></div>';
+        }).join('');
+        finishRender(rows ? '<div class="none wsc-head">WSC 有效种</div>' + rows : '<div class="none wsc-none">WSC 查无更多匹配</div>');
+        bindWscSpecies(genus);
+      });
+  } else if (/^[A-Za-z]{2,}$/.test(q.replace(/\\s/g, ''))) {
+      // 属前缀预测
+      fetchWsc('genus', q, function (items) {
+        var wrows = items.filter(function (g) {
+          return !list.some(function (t) { return t.name.toLowerCase() === g.name.toLowerCase(); });
+        }).map(function (g) {
+          return '<div class="opt" data-wscgenus="' + escHtml(g.name) + '"><span class="cn" style="font-style:italic">' + escHtml(g.name) + '</span><span class="meta">' + escHtml(g.author || 'WSC') + '</span></div>';
+        }).join('');
+        var sec = wrows ? '<div class="none wsc-head">WSC 属</div>' + wrows : '';
+        finishRender(sec);
+        Array.prototype.slice.call(pop.querySelectorAll('[data-wscgenus]')).forEach(function (el) {
+          el.addEventListener('mousedown', function (e) {
+            e.preventDefault();
+            var gname = el.getAttribute('data-wscgenus');
+            ensureWorkingTaxon(gname, null, function (t) {
+              if (!t) { setStatus('无法登记该属', true); return; }
+              chooseTaxon(t);
+            });
+          });
+        });
+      });
+    } else {
+      finishRender('');
+    }
+
+    function bindWscSpecies(genus) {
+      Array.prototype.slice.call(pop.querySelectorAll('.opt[data-wscname]')).forEach(function (el) {
+        el.addEventListener('mousedown', function (e) {
+          e.preventDefault();
+          createWorkingAndSelect(el.getAttribute('data-wscname'), null);
+        });
+      });
+    }
   }
   spInput.addEventListener('focus', function () { openPop(spInput.value); });
   spInput.addEventListener('input', function () { openPop(spInput.value); });

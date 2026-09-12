@@ -312,6 +312,9 @@ button.act-btn { cursor:pointer; }
   max-height:290px; overflow:auto; padding:6px; display:none;
 }
 .species-pop.open { display:block; }
+.species-pop .wsc-head { font-size:11px; letter-spacing:.14em; color:var(--faint); padding:8px 12px 2px; }
+.species-pop .wsc-none { font-size:12.5px; color:var(--faint); padding:10px 12px; }
+.species-pop .opt .meta { display:block; font-size:11.5px; color:var(--faint); }
 .species-pop .opt { padding:9px 12px; border-radius:8px; cursor:pointer; display:flex; flex-direction:column; gap:1px; }
 .species-pop .opt:hover, .species-pop .opt.sel { background:var(--paper-deep); }
 .species-pop .opt .cn { font-size:14.5px; }
