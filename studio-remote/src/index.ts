@@ -799,6 +799,26 @@ app.get('/studio/api/wsc/complete', async (c) => {
   return c.json({ ok: true, items });
 });
 
+// 「我的观察」JSON 列表（微信小程序 / 其它原生客户端复用同一会话与数据）
+app.get('/studio/api/observations', async (c) => {
+  const u = user(c);
+  const rows = await all<any>(
+    c.env.DB,
+    `SELECT o.public_id, o.observed_at, o.status, o.field_note,
+            i.display_identification,
+            p.name AS place_name, p.admin1, p.admin2, p.country AS country_name,
+            (SELECT COUNT(*) FROM media m WHERE m.observation_id = o.id) AS photo_count
+     FROM observations o
+     LEFT JOIN identifications i ON i.observation_id = o.id AND i.is_current = 1
+     LEFT JOIN places p ON p.id = o.place_id
+     WHERE o.created_by = ? AND o.status != 'archived'
+     ORDER BY o.observed_at DESC, o.id DESC
+     LIMIT 100`,
+    u.id,
+  );
+  return c.json({ ok: true, observations: rows });
+});
+
 app.patch('/studio/api/taxa/:slug', async (c) => {
   const u = user(c);
   if (u.role !== 'owner') return c.json({ error: '只有站长可以管理类群' }, 403);

@@ -1,0 +1,26 @@
+<view class="wrap">
+  <view class="brand">
+    <image class="mark" src="/assets/logo-mark.png" mode="aspectFit" />
+    <view class="t1">红栏杆跳蛛观察志</view>
+    <view class="t2">Field Studio · 受邀协作工作台</view>
+  </view>
+
+  <view class="card">
+    <block wx:if="{{step === 1}}">
+      <label class="label">受邀邮箱</label>
+      <input class="input" type="text" value="{{email}}" bindinput="onEmail" placeholder="与网页版相同的受邀邮箱" />
+      <view class="msg">{{msg}}</view>
+      <button class="btn btn-primary" disabled="{{sending}}" bindtap="sendOtp">发送验证码</button>
+    </block>
+    <block wx:else>
+      <view class="sent">验证码已发送至 {{email}}</view>
+      <label class="label">验证码</label>
+      <input class="input" type="number" value="{{code}}" bindinput="onCode" placeholder="6 位数字" />
+      <view class="msg">{{msg}}</view>
+      <button class="btn btn-primary" disabled="{{sending}}" bindtap="verify">登录</button>
+      <button class="btn back" disabled="{{sending}}" bindtap="sendOtp">重新发送</button>
+    </block>
+  </view>
+
+  <view class="foot hint">仅受邀伙伴可登录。未受邀？请通过 salticidnotes.cn 联系站长。</view>
+</view>

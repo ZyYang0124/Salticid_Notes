@@ -1,0 +1,16 @@
+<view class="top">
+  <button class="btn btn-terra new-btn" bindtap="goNew">＋ 记一条新观察</button>
+</view>
+
+<view wx:if="{{loading}}" class="empty hint">加载中…</view>
+<view wx:elif="{{error}}" class="empty msg">{{error}}</view>
+<view wx:elif="{{items.length === 0}}" class="empty hint">还没有观察。出门拍第一只吧。</view>
+
+<view wx:for="{{items}}" wx:key="id" class="card obs" bindtap="copyId" data-id="{{item.id}}">
+  <view class="line1">
+    <view class="name">{{item.name}}</view>
+    <view class="chip {{item.published ? 'chip-pub' : 'chip-draft'}}">{{item.status}}</view>
+  </view>
+  <view class="sub hint">{{item.date}} · {{item.place}} · {{item.photos}} 张照片</view>
+  <view class="id hint">{{item.id}}（点按复制编号）</view>
+</view>

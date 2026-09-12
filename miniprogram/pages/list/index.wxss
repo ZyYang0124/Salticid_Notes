@@ -1,0 +1,35 @@
+.top {
+  padding: 24rpx;
+}
+
+.new-btn {
+  width: 100%;
+}
+
+.empty {
+  text-align: center;
+  padding: 80rpx 40rpx;
+}
+
+.obs .line1 {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16rpx;
+}
+
+.obs .name {
+  font-size: 17px;
+  font-style: italic;
+  font-family: Georgia, serif;
+}
+
+.obs .sub {
+  margin-top: 6rpx;
+}
+
+.obs .id {
+  margin-top: 6rpx;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+}

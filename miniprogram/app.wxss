@@ -1,0 +1,108 @@
+/* 全局样式：沿用公开站的自然志色板（暖纸 / 墨色 / 陶土红） */
+page {
+  background: #f5f1e8;
+  color: #2b2620;
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+.card {
+  background: #fffdf8;
+  border: 1rpx solid #e2dac8;
+  border-radius: 18rpx;
+  padding: 26rpx;
+  margin: 0 24rpx 22rpx;
+}
+
+.label {
+  display: block;
+  font-size: 12px;
+  letter-spacing: 0.14em;
+  color: #8a7f6a;
+  margin: 20rpx 0 8rpx;
+}
+
+.input,
+.textarea {
+  background: #fff;
+  border: 1rpx solid #ddd3bd;
+  border-radius: 12rpx;
+  padding: 16rpx 20rpx;
+  font-size: 15px;
+}
+
+.row {
+  display: flex;
+  gap: 16rpx;
+}
+
+.row > .col {
+  flex: 1;
+  min-width: 0;
+}
+
+.btn {
+  border-radius: 14rpx;
+  font-size: 15px;
+  padding: 18rpx 0;
+  text-align: center;
+  background: #fffdf8;
+  border: 1rpx solid #c9bda1;
+  color: #2b2620;
+}
+
+.btn::after {
+  border: none;
+}
+
+.btn-primary {
+  background: #26221c;
+  border-color: #26221c;
+  color: #f5f1e8;
+}
+
+.btn-terra {
+  background: #b5502e;
+  border-color: #b5502e;
+  color: #fff;
+}
+
+.btn[disabled] {
+  opacity: 0.45;
+  color: #2b2620;
+  background: #eae4d6;
+  border-color: #eae4d6;
+}
+
+.chip {
+  display: inline-block;
+  font-size: 11px;
+  padding: 3rpx 14rpx;
+  border-radius: 999rpx;
+  border: 1rpx solid #c9bda1;
+  color: #8a7f6a;
+}
+
+.chip-pub {
+  background: #ecf3e6;
+  border-color: #9db88a;
+  color: #4c6b3c;
+}
+
+.chip-draft {
+  background: #f7ecdd;
+  border-color: #d8b98c;
+  color: #8a5a22;
+}
+
+.hint {
+  font-size: 12px;
+  color: #a2967e;
+}
+
+.msg {
+  font-size: 13px;
+  color: #b5502e;
+  margin-top: 14rpx;
+  min-height: 34rpx;
+}

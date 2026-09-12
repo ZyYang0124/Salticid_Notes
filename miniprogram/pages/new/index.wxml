@@ -1,0 +1,84 @@
+<view class="sec-hint">拍完即记。整理、鉴定与札记可回到网页版 Studio 完成。</view>
+
+<!-- 照片 -->
+<view class="card">
+  <label class="label">照片（必填，至少一张）</label>
+  <view class="thumbs">
+    <view wx:for="{{photos}}" wx:key="path" class="thumb">
+      <image src="{{item.path}}" mode="aspectFill" />
+      <view wx:if="{{item.state === 'uploading'}}" class="state uploading">上传中</view>
+      <view wx:elif="{{item.state === 'done'}}" class="state done">已上传</view>
+      <view wx:elif="{{item.state === 'error'}}" class="state err">失败</view>
+      <view class="del" catchtap="removePhoto" data-index="{{index}}">×</view>
+    </view>
+    <view wx:if="{{photos.length < 9}}" class="thumb add" bindtap="choose">＋</view>
+  </view>
+  <view wx:if="{{exifHint}}" class="exif">{{exifHint}}</view>
+</view>
+
+<!-- 时间与地点 -->
+<view class="card">
+  <label class="label">观察日期</label>
+  <picker mode="date" value="{{observedAt}}" end="{{today}}" bindchange="onDate">
+    <view class="input picker-val">{{observedAt || '选择日期'}}</view>
+  </picker>
+
+  <view class="row">
+    <view class="col">
+      <label class="label">纬度</label>
+      <input class="input" type="digit" value="{{lat}}" bindinput="onField" data-k="lat" placeholder="如 23.12345" />
+    </view>
+    <view class="col">
+      <label class="label">经度</label>
+      <input class="input" type="digit" value="{{lng}}" bindinput="onField" data-k="lng" placeholder="如 113.12345" />
+    </view>
+  </view>
+
+  <label class="label">国家 / 地区</label>
+  <input class="input" value="{{country}}" bindinput="onField" data-k="country" placeholder="如 中国" />
+
+  <view class="row">
+    <view class="col">
+      <label class="label">省 / 州</label>
+      <input class="input" value="{{admin1}}" bindinput="onField" data-k="admin1" />
+    </view>
+    <view class="col">
+      <label class="label">市 / 县</label>
+      <input class="input" value="{{admin2}}" bindinput="onField" data-k="admin2" />
+    </view>
+  </view>
+
+  <label class="label">详细地点</label>
+  <input class="input" value="{{locality}}" bindinput="onField" data-k="locality" placeholder="山名、步道、具体位置" />
+
+  <label class="label">生境</label>
+  <input class="input" value="{{habitat}}" bindinput="onField" data-k="habitat" placeholder="如 林下叶面 / 溪边石壁" />
+</view>
+
+<!-- 鉴定 -->
+<view class="card">
+  <label class="label">鉴定（可选，遵循 WSC）</label>
+  <input class="input" value="{{species}}" bindinput="onSpecies" placeholder="输入属名查属；属名 + 空格查种" />
+  <view wx:if="{{suggestions.length}}" class="suggest">
+    <view wx:for="{{suggestions}}" wx:key="name" class="sg" catchtap="pickSpecies" data-name="{{item.name}}">
+      <text class="sg-name">{{item.name}}</text>
+      <text wx:if="{{item.status}}" class="sg-status">{{item.status}}</text>
+    </view>
+  </view>
+  <view class="hint">属名 WSC 查无 → 无法发布；种名查无 → 建议记为「属名 sp.」。未知、cf.、工作编号都是合法状态。</view>
+</view>
+
+<!-- 野外笔记 -->
+<view class="card">
+  <label class="label">野外笔记（可选）</label>
+  <textarea class="textarea" value="{{note}}" bindinput="onField" data-k="note" maxlength="2000" auto-height placeholder="行为、微生境、当天的故事……" />
+</view>
+
+<!-- 动作 -->
+<view class="actions">
+  <view class="msg">{{statusMsg}}</view>
+  <button wx:if="{{phase === 'editing'}}" class="btn btn-primary" disabled="{{busy || photos.length === 0}}" bindtap="createAndUpload">
+    {{busy ? '上传中…' : '创建并上传'}}
+  </button>
+  <button wx:elif="{{phase === 'ready'}}" class="btn btn-terra" disabled="{{busy}}" bindtap="publish">发布公开</button>
+</view>

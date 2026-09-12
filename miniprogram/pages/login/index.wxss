@@ -1,0 +1,38 @@
+.wrap {
+  padding: 60rpx 0 40rpx;
+}
+
+.brand {
+  text-align: center;
+  padding: 30rpx 0 50rpx;
+}
+
+.mark {
+  width: 130rpx;
+  height: 130rpx;
+}
+
+.t1 {
+  font-size: 20px;
+  letter-spacing: 0.12em;
+  margin-top: 18rpx;
+}
+
+.t2 {
+  font-size: 12px;
+  letter-spacing: 0.2em;
+  color: #8a7f6a;
+  margin-top: 8rpx;
+}
+
+.sent {
+  font-size: 13px;
+  color: #4c6b3c;
+  background: #ecf3e6;
+  border-radius: 10rpx;
+  padding: 14rpx 20rpx;
+}
+
+.back {
+  margin-top: 18rpx;
+}

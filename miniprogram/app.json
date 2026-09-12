@@ -1,0 +1,13 @@
+{
+  "pages": ["pages/list/index", "pages/new/index", "pages/login/index"],
+  "window": {
+    "navigationBarBackgroundColor": "#26221c",
+    "navigationBarTitleText": "红栏杆跳蛛观察志",
+    "navigationBarTextStyle": "white",
+    "backgroundColor": "#f5f1e8",
+    "backgroundTextStyle": "dark"
+  },
+  "style": "v2",
+  "sitemapLocation": "sitemap.json",
+  "lazyCodeLoading": "requiredComponents"
+}

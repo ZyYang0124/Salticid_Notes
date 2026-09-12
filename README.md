@@ -70,6 +70,7 @@ src/                 公开站（页面 / 组件 / 数据层 / 构建期渲染�
   data/              类型化 JSON 源表（手写数据 + studio-*.json 自动同步）
   lib/               store（装载+校验）· privacy（公开 DTO）· queries · markdown
 studio-remote/       Field Studio（Workers + D1 + R2；migrations / src / scripts）
+miniprogram/         Field Studio 微信小程序端（复用 Studio API；见其 README）
 scripts/             媒体派生 · 隐私测试 · 部署辅助
 docs/                数据审计文档
 ```

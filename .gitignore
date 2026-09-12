@@ -26,3 +26,6 @@ Thumbs.db
 studio-remote/.dev.vars
 studio-remote/.e2e-manifest.json
 .shots/
+
+# 微信开发者工具本地私有配置
+miniprogram/project.private.config.json
