@@ -25,7 +25,9 @@ archive.sort((a, b) => b.media.public_id.localeCompare(a.media.public_id));
       <input id="media-q" placeholder="搜索编号 / 物种 / 摄影者 / 地点 / 年份" autocomplete="off" />
       <select id="media-vt">
         <option value="">全部类型</option>
-        {Object.entries(VIEW_TYPE_ZH).map(([v, label]) => <option value={v}>{label}</option>)}
+        {Object.entries(VIEW_TYPE_ZH)
+          .filter(([v]) => v !== 'vulva')
+          .map(([v, label]) => <option value={v}>{label}</option>)}
       </select>
     </div>
 
