@@ -494,6 +494,7 @@ app.delete('/studio/api/media/:public_id', async (c) => {
   if (u.role !== 'owner' && (!obs || obs.created_by !== u.id)) return c.text('无权操作。', 403);
   await run(c.env.DB, 'DELETE FROM media WHERE id = ?', m.id);
   // R2 派生图保留（编号已用掉不再复用，规则 19）；原图永不删除（规则 20）
+  if (m.photo_hash) await run(c.env.DB, 'UPDATE photo_hashes SET deleted = 1 WHERE hash = ?', m.photo_hash);
   await audit(c.env, u.display_name, 'media', m.public_id, 'delete');
   return c.json({ ok: true });
 });
@@ -826,6 +827,32 @@ app.post('/studio/api/taxa/merge', async (c) => {
 
 // 一次性迁移：SFN-M-NNNNNN → SN-YYYY-NNNNNN（年取关联观察拍摄年，缺省当年）。
 // 幂等：已是 SN- 的行跳过；完成后把按年计数器校准到已用最大序号。
+// 存量照片指纹回填：为每条 media 的 R2 原图计算 SHA-256 入库（幂等）
+app.post('/studio/api/migrate/backfill-photo-hash', async (c) => {
+  const u = user(c);
+  if (u.role !== 'owner') return c.json({ error: '只有站长可以执行迁移' }, 403);
+  if (!sameOrigin(c.req.raw)) return c.json({ error: 'Forbidden' }, 403);
+  const rows = await all<any>(c.env.DB, 'SELECT id, public_id, orig_ext FROM media ORDER BY id');
+  let backfilled = 0, skipped = 0;
+  for (const m of rows) {
+    const already = await get<{ public_id: string }>(
+      c.env.DB, 'SELECT public_id FROM photo_hashes WHERE hash = (SELECT photo_hash FROM media WHERE id = ?) AND photo_hash IS NOT NULL', m.id,
+    );
+    const obj = await c.env.MEDIA.get(`originals/${m.public_id}${m.orig_ext}`);
+    if (!obj) { skipped++; continue; }
+    const buf = await obj.arrayBuffer();
+    const digest = await crypto.subtle.digest('SHA-256', buf);
+    const hash = Array.from(new Uint8Array(digest)).map((b) => b.toString(16).padStart(2, '0')).join('');
+    const dupe = await get<{ public_id: string }>(c.env.DB, 'SELECT public_id FROM photo_hashes WHERE hash = ?', hash);
+    if (dupe) { skipped++; continue; }
+    await run(c.env.DB, 'UPDATE media SET photo_hash = ? WHERE id = ?', hash, m.id);
+    await run(c.env.DB, 'INSERT OR IGNORE INTO photo_hashes (hash, public_id) VALUES (?, ?)', hash, m.public_id);
+    backfilled++;
+  }
+  await audit(c.env, u.display_name, 'media', null, 'photo-hash.backfill', { backfilled, skipped });
+  return c.json({ ok: true, total: rows.length, backfilled, skipped });
+});
+
 app.post('/studio/api/migrate/renumber-media', async (c) => {
   const u = user(c);
   if (u.role !== 'owner') return c.json({ error: '只有站长可以执行迁移' }, 403);

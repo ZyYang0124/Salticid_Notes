@@ -42,7 +42,22 @@ export async function saveUpload(
     if (!/^\d{3,4}\.(jpg|webp|avif)$/.test(v.name)) bad(`派生图命名不合法：${v.name}`);
   }
 
-  // 编号体系（2026-09）：只有照片对外编号 SN-YYYY-NNNNNN（按年计数）；观察不再对外编号
+  // 内容指纹（SHA-256）：同一张原图全站只允许上传一次；删除后指纹保留，编号永不复用
+  const bytes = await f.arrayBuffer();
+  const digest = await crypto.subtle.digest('SHA-256', bytes);
+  const photoHash = Array.from(new Uint8Array(digest)).map((b) => b.toString(16).padStart(2, '0')).join('');
+  const dup = await get<{ public_id: string; deleted: number }>(
+    env.DB,
+    'SELECT public_id, deleted FROM photo_hashes WHERE hash = ?',
+    photoHash,
+  );
+  if (dup) {
+    bad(dup.deleted
+      ? `这张照片曾以编号 ${dup.public_id} 上传过（已删除）。编号不复用，同一张照片不能再次上传`
+      : `这张照片已经上传过：编号 ${dup.public_id}。同一张照片不能重复上传`);
+  }
+
+  // 编号体系（2026-09）：只有照片对外编号 SN-YYYY-NNNNN（按年计数）；观察不再对外编号
   const year = new Date().getFullYear();
   const seq = await nextCounter(env.DB, `sfn-media-${year}`);
   const publicId = `SN-${year}-${String(seq).padStart(5, '0')}`;
@@ -51,7 +66,7 @@ export async function saveUpload(
 
   // 规则 20：原图永不覆盖——先查再写，撞号即失败
   if (await env.MEDIA.head(origKey)) bad('编号冲突：同名原图已存在，请重试');
-  await env.MEDIA.put(origKey, f.stream(), { httpMetadata: { contentType: f.type } });
+  await env.MEDIA.put(origKey, bytes, { httpMetadata: { contentType: f.type } });
 
   const variantNames: string[] = [];
   for (const v of input.variants) {
@@ -64,8 +79,8 @@ export async function saveUpload(
   await run(
     env.DB,
     `INSERT INTO media (public_id, observation_id, note_slug, file_stem, orig_ext, variants, view_type, caption,
-       sort_order, is_cover, photographer_name, license, visibility, width, height)
-     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+       sort_order, is_cover, photographer_name, license, visibility, width, height, photo_hash)
+     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
     publicId,
     ref.observationId,
     ref.noteSlug,
@@ -81,6 +96,14 @@ export async function saveUpload(
     ref.publicVisibility ? 'public' : 'private',
     Math.round(input.width),
     Math.round(input.height),
+    photoHash,
+  );
+
+  // 指纹注册：后续同图重传一律拒绝；删除照片后本行保留（编号烧毁）
+  await run(
+    env.DB,
+    'INSERT OR IGNORE INTO photo_hashes (hash, public_id) VALUES (?, ?)',
+    photoHash, publicId,
   );
   return { publicId, fileStem: publicId, width: Math.round(input.width), height: Math.round(input.height) };
 }
