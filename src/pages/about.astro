@@ -19,16 +19,34 @@ import { withBase } from '../lib/privacy';
         不是「世界上有哪些跳蛛」，而是「我们在哪里、什么时候、以怎样的方式，遇见过这些跳蛛」。
       </div>
 
-      <h2>我们记录什么</h2>
+      <h2>为什么做这个站</h2>
       <p>
-        {siteConfig.site_name}记录咩咩和伙伴们在野外及日常生活中与跳蛛相遇时留下的照片、地点、观察和自然史笔记，以及少量的标本与分类学信息。这里不是一份完整的跳蛛名录，网站的边界由我们真正遇见过什么决定。
+        找跳蛛的人大多有过这样的时刻：在林缘翻了一下午叶子，或蹲在小区绿化带旁看了一晚上，遇到了好几种叫不出名字的跳蛛，拍了一些照片，回家后照片散落在硬盘里，遇见过什么很快就说不清了。
       </p>
       <p>
-        它<strong>不是</strong>任何地区的跳蛛完整名录，也不是 GBIF、iNaturalist 或 World Spider Catalog 的替代品，更不是公共鉴定平台。
+        这个网站就是为了把那些时刻留下来。它不追求「全」，只追求「真」：每一条记录都对应一次真实的相遇，有时间、有地点、有照片、有当时写下的几句话。半年后回头看，一条条记录连起来，就是我们与这些小动物打交道的全部历史。
+      </p>
+      <p>
+        它<strong>不是</strong>任何地区的跳蛛完整名录，也不是 GBIF、iNaturalist 或 World Spider Catalog 的替代品，更不是公共鉴定平台。如果你想查「世界上有哪些跳蛛」，请去那些地方；如果你想看「两个人在自己的生活半径里真实遇见过哪些跳蛛」，请往下翻。
+      </p>
+
+      <h2>我们记录什么</h2>
+      <p>
+        {siteConfig.site_name}记录咩咩和哈姆在野外及日常生活中与跳蛛相遇时留下的照片、地点、观察和自然史笔记，以及少量的标本与分类学信息。记录的内容很杂：一次雨后山径的巡游、白底棚里的一张体面肖像、某种跳蛛求偶时的小动作、一个至今没定下名字的未定种——只要它来自真实的观察，就值得留下来。
       </p>
       <p>
         本站的最高结构原则是：<strong>每条记录都始于一次观察，而不是一个物种条目。</strong>物种页面永远由观察记录聚合而成；鉴定可以随研究深入而改变，观察的永久编号与链接始终不变。
       </p>
+
+      <h2>各板块是什么</h2>
+      <div class="module-list">
+        <div class="module"><b>观察</b><span>网站的核心。每一次相遇一条记录：照片、时间、精确地点、鉴定与野外笔记，按永久编号归档，永远可追溯。</span></div>
+        <div class="module"><b>物种</b><span>由观察自动聚合出的「类群肖像」——某个类群在我们的观察史里长什么样、何时何地遇见过。不是百科条目。</span></div>
+        <div class="module"><b>影像</b><span>全部照片的科学影像档案。每张照片有唯一编号、署名与出处，可单独引用与追溯。</span></div>
+        <div class="module"><b>札记</b><span>比观察更长一些的文字：野外考察的过程、拍摄的方法、观察的心得。</span></div>
+        <div class="module"><b>地点</b><span>我们真实记录过的地方：长什么样、遇见过什么。坐标精确公开，但不代表任何物种的完整分布。</span></div>
+        <div class="module"><b>伙伴</b><span>共同维护本站的记录者们。每人一个主页，收藏各自的观察与代表影像。</span></div>
+      </div>
 
       <h2>谁在记录</h2>
       <p>
@@ -36,19 +54,20 @@ import { withBase } from '../lib/privacy';
         <a href="https://github.com/ZyYang0124/Salticid_Notes" style="text-decoration: underline;">GitHub</a> 联系我们。
       </p>
 
-      <h2>鉴定会变化</h2>
+      <h2>关于鉴定</h2>
       <p>
-        分类学认识会随着标本检查、新文献和后续研究变化。观察记录本身不会因为鉴定改变而消失，因此本站保留必要的鉴定修订历史。
+        分类学认识会随着标本检查、新文献和后续研究变化，跳蛛类群尤其如此。本站对鉴定采取诚实态度：<strong>不确定的记录会明确标注</strong>（cf.、aff.、sp.、工作编号都是合法状态），已发布的鉴定在后续研究中修订时，旧鉴定进入修订历史而不是被悄悄抹去。所有正式学名以
+        <a href="https://wsc.nmbe.ch" target="_blank" rel="noopener">World Spider Catalog</a> 为准，发布时核验、定期比对更新。
       </p>
 
       <h2>地点与坐标</h2>
       <p>
-        对具有精确坐标的已发布观察，本站直接公开其经纬度。没有可靠坐标的记录不会猜测或补造位置。
+        对具有可靠坐标的已发布观察，本站直接公开其经纬度，方便核对生境与复现观察条件。没有可靠坐标的记录不会猜测或补造位置。
       </p>
 
       <h2>图片与版权</h2>
       <p>
-        页脚的「© 红栏杆」是本站的品牌版权表达；单张照片的版权依然属于它的摄影者，并在每张照片旁逐张署名。
+        跳蛛的体色具有科学意义，本站所有照片保持原始色彩，不做任何滤镜或风格化处理。页脚的「© 红栏杆」是本站的品牌版权表达；单张照片的版权依然属于它的摄影者，并在每张照片旁逐张署名。
       </p>
 
       <h2 id="colophon">技术与开放</h2>
@@ -82,6 +101,15 @@ import { withBase } from '../lib/privacy';
   .about-art img { width: 100%; height: auto; }
   .about-page > .page-title,
   .about-page > .about-body { position: relative; z-index: 1; }
+  /* 各板块介绍：简洁的「名词 + 一句话」列表 */
+  .module-list { display: flex; flex-direction: column; }
+  .module {
+    display: grid; grid-template-columns: 72px 1fr; gap: 18px;
+    padding: 12px 0; border-bottom: 1px solid var(--line-soft);
+    font-size: 15.5px; line-height: 1.85; align-items: baseline;
+  }
+  .module b { font-family: var(--serif); font-weight: 700; color: var(--ink); white-space: nowrap; }
+  .module span { color: var(--muted); }
   /* mobile：居中缩小，避免干扰窄栏阅读 */
   @media (max-width: 860px) {
     .about-art { right: 50%; transform: translate(50%, -50%); width: min(78vw, 380px); opacity: 0.055; }
