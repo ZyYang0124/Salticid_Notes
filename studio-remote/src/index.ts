@@ -834,23 +834,26 @@ app.post('/studio/api/migrate/backfill-photo-hash', async (c) => {
   if (!sameOrigin(c.req.raw)) return c.json({ error: 'Forbidden' }, 403);
   const rows = await all<any>(c.env.DB, 'SELECT id, public_id, orig_ext FROM media ORDER BY id');
   let backfilled = 0, skipped = 0;
+  const errs: string[] = [];
   for (const m of rows) {
-    const already = await get<{ public_id: string }>(
-      c.env.DB, 'SELECT public_id FROM photo_hashes WHERE hash = (SELECT photo_hash FROM media WHERE id = ?) AND photo_hash IS NOT NULL', m.id,
-    );
-    const obj = await c.env.MEDIA.get(`originals/${m.public_id}${m.orig_ext}`);
-    if (!obj) { skipped++; continue; }
-    const buf = await obj.arrayBuffer();
-    const digest = await crypto.subtle.digest('SHA-256', buf);
-    const hash = Array.from(new Uint8Array(digest)).map((b) => b.toString(16).padStart(2, '0')).join('');
-    const dupe = await get<{ public_id: string }>(c.env.DB, 'SELECT public_id FROM photo_hashes WHERE hash = ?', hash);
-    if (dupe) { skipped++; continue; }
-    await run(c.env.DB, 'UPDATE media SET photo_hash = ? WHERE id = ?', hash, m.id);
-    await run(c.env.DB, 'INSERT OR IGNORE INTO photo_hashes (hash, public_id) VALUES (?, ?)', hash, m.public_id);
-    backfilled++;
+    try {
+      const obj = await c.env.MEDIA.get(`originals/${m.public_id}${m.orig_ext}`);
+      if (!obj) { skipped++; continue; }
+      const buf = await obj.arrayBuffer();
+      const digest = await crypto.subtle.digest('SHA-256', buf);
+      const hash = Array.from(new Uint8Array(digest)).map((b) => b.toString(16).padStart(2, '0')).join('');
+      const done = await get<{ public_id: string }>(c.env.DB, 'SELECT public_id FROM photo_hashes WHERE hash = ?', hash);
+      if (done) { skipped++; continue; }
+      await run(c.env.DB, 'UPDATE media SET photo_hash = ? WHERE public_id = ?', hash, m.public_id);
+      await run(c.env.DB, 'INSERT INTO photo_hashes (hash, public_id) VALUES (?, ?)', hash, m.public_id);
+      backfilled++;
+    } catch (e: any) {
+      errs.push(`${m.public_id}: ${String(e?.message ?? e).slice(0, 120)}`);
+      skipped++;
+    }
   }
   await audit(c.env, u.display_name, 'media', null, 'photo-hash.backfill', { backfilled, skipped });
-  return c.json({ ok: true, total: rows.length, backfilled, skipped });
+  return c.json({ ok: true, total: rows.length, backfilled, skipped, errors: errs.slice(0, 5) });
 });
 
 app.post('/studio/api/migrate/renumber-media', async (c) => {
