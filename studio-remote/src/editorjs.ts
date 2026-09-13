@@ -358,7 +358,7 @@ const OBS_EDITOR_JS = `
       cnInput.maxLength = 60;
       var sn = document.createElement('span');
       sn.className = 'sn';
-      sn.textContent = t.name;
+      sn.textContent = t.name + (t.rank !== 'species' && t.rank !== 'subspecies' ? ' sp.' : '');
       var clearBtn = document.createElement('button');
       clearBtn.type = 'button';
       clearBtn.id = 'sp-clear';
@@ -431,20 +431,18 @@ const OBS_EDITOR_JS = `
     }).catch(function () { cb(null); });
   }
   function chooseTaxon(t) {
+    // 最终选定：种 / 属级鉴定（属级 = 显式点「仅记到属」，点属名本身只下钻不锁定）
     window.__chosenSlug = t.slug;
     pop.classList.remove('open');
-    if (t.rank === 'genus') {
-      spInput.value = t.name + ' ';
-      window.__chosenSlug = t.slug;
-      renderChosen();
-      scheduleSave();
-      openPop(spInput.value);
-      spInput.focus();
-      return;
-    }
     spInput.value = '';
     renderChosen();
     scheduleSave();
+  }
+  function drillGenus(name) {
+    // 点属：仅下钻到种级联，不锁定、不保存
+    spInput.value = name + ' ';
+    openPop(spInput.value);
+    spInput.focus();
   }
 
   window.__spLog = [];
@@ -457,7 +455,7 @@ const OBS_EDITOR_JS = `
     var qLower = q.trim().toLowerCase();
     var exact = q && list.some(function (t) { return t.name.toLowerCase() === qLower; });
     var nameLike = /^[A-Za-z][A-Za-z. -]{1,79}$/.test(q.trim());
-    var createOpt = q && nameLike && !exact
+    var createOpt = !hasSpace && q && nameLike && !exact
       ? '<div class="opt place-new" data-new-taxon="1">＋ 建立工作编号「' + escHtml(q.trim()) + '」</div>'
       : '';
     var localHtml = list.map(function (t) { return '<div class="opt" data-slug="' + escHtml(t.slug) + '">' + fmtName(t) + '</div>'; }).join('');
@@ -470,7 +468,7 @@ const OBS_EDITOR_JS = `
           e.preventDefault();
           var slug = el.getAttribute('data-slug');
           var t = (boot.taxa || []).filter(function (x) { return x.slug === slug; })[0];
-          if (t && t.rank === 'genus' && !hasSpace) { chooseTaxon(t); return; }
+          if (t && t.rank === 'genus' && !hasSpace) { drillGenus(t.name); return; }
           window.__chosenSlug = slug;
           pop.classList.remove('open');
           spInput.value = '';
@@ -508,16 +506,19 @@ const OBS_EDITOR_JS = `
     }
 
     if (hasSpace) {
-      // 属已定 → 种级联：WSC 该属 ACCEPTED 种
+      // 属已定 → 种级联：首项显式「仅记到属」，其后为 WSC 该属 ACCEPTED 种
       var genus = q.split(/\\s+/)[0];
+      var genusOpt = '<div class="opt genus-only" data-genus-only="1"><span class="cn">仅记到属</span><span class="sn">' + escHtml(genus) + ' sp.</span></div>';
       fetchWsc('species', genus, function (items) {
-        if (!items || !items.length) { finishRender('<div class="none wsc-none">WSC 查无更多匹配</div>'); return; }
+        var head = '<div class="none wsc-head">属级</div>' + genusOpt + '<div class="none wsc-head">WSC 有效种</div>';
+        if (!items || !items.length) { finishRender(head); bindGenusOnly(genus); return; }
         var accepted = items.filter(function (i2) { return i2.status === 'ACCEPTED'; });
         var rows = accepted.map(function (i2) {
           var full = genus + ' ' + i2.epithet;
           return '<div class="opt" data-wscname="' + escHtml(full) + '"><span class="cn" style="font-style:italic">' + escHtml(genus) + ' ' + escHtml(i2.epithet) + '</span></div>';
         }).join('');
-        finishRender(rows ? '<div class="none wsc-head">WSC 有效种</div>' + rows : '<div class="none wsc-none">WSC 查无更多匹配</div>');
+        finishRender(head + rows);
+        bindGenusOnly(genus);
         bindWscSpecies(genus);
       });
   } else if (/^[A-Za-z]{2,}$/.test(q.replace(/\\s/g, ''))) {
@@ -533,16 +534,27 @@ const OBS_EDITOR_JS = `
         Array.prototype.slice.call(pop.querySelectorAll('[data-wscgenus]')).forEach(function (el) {
           el.addEventListener('mousedown', function (e) {
             e.preventDefault();
-            var gname = el.getAttribute('data-wscgenus');
-            ensureWorkingTaxon(gname, null, function (t) {
-              if (!t) { setStatus('无法登记该属', true); return; }
-              chooseTaxon(t);
-            });
+            // 点属名只下钻到种级联，不登记、不锁定
+            drillGenus(el.getAttribute('data-wscgenus'));
           });
         });
       });
     } else {
       finishRender('');
+    }
+
+    function bindGenusOnly(genus) {
+      // 显式属级鉴定：登记该属并锁定
+      Array.prototype.slice.call(pop.querySelectorAll('[data-genus-only]')).forEach(function (el) {
+        el.addEventListener('mousedown', function (e) {
+          e.preventDefault();
+          ensureWorkingTaxon(genus, null, function (t) {
+            if (!t) { setStatus('无法登记该属', true); return; }
+            chooseTaxon(t);
+            setStatus('已记录为属级：' + genus + ' sp.');
+          });
+        });
+      });
     }
 
     function bindWscSpecies(genus) {

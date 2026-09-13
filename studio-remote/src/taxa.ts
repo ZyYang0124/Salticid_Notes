@@ -183,15 +183,17 @@ export async function createWorkingTaxon(env: Env, rawName: string, actor: strin
     };
   }
   const cn = chineseName ? String(chineseName).trim().slice(0, 60) || null : null;
+  // 单词名 = 属级鉴定（显示为 Genus sp.）；双名及以上 = 种级
+  const rank = name.indexOf(' ') === -1 ? 'genus' : 'species';
   await run(
     env.DB,
     'INSERT INTO working_taxa (slug, scientific_name, rank, status, chinese_name, created_by) VALUES (?,?,?,?,?,?)',
     slug,
     name,
-    'species',
+    rank,
     'working',
     cn,
     actor,
   );
-  return { ok: true, created: true, taxon: { slug, name, cn, rank: 'species', working: true } };
+  return { ok: true, created: true, taxon: { slug, name, cn, rank, working: true } };
 }
