@@ -1,1 +1,23 @@
-[]
+[
+  {
+    "id": "studio-23",
+    "public_id": "SFN-2026-000032",
+    "place_id": "place-14",
+    "created_by": "prof-zhiyong",
+    "observer": "prof-zhiyong",
+    "observed_at": "2026-05-04",
+    "observed_at_precision": "day",
+    "location_id": "loc-studio-23",
+    "sex": "female",
+    "life_stage": "adult",
+    "count": 1,
+    "habitat": null,
+    "microhabitat": "干枯芭蕉叶表面",
+    "behavior": null,
+    "plant": "芭蕉树",
+    "weather": "晴",
+    "field_note": "本物种观察于田谷间沼泽水源附近的芭蕉树叶，轻抖芭蕉叶可掉落相当数量个体。",
+    "status": "published",
+    "visibility": "public"
+  }
+]

@@ -1,1 +1,14 @@
-[]
+[
+  {
+    "id": "loc-studio-23",
+    "country_code": "",
+    "country_name": "中国",
+    "admin1": "云南省",
+    "admin2": "普洱市澜沧拉祜族自治县",
+    "locality": "岩因村",
+    "site_name": "沟谷沼泽水源附近",
+    "latitude": 22.392574,
+    "longitude": 99.933593,
+    "elevation_m": 1259
+  }
+]

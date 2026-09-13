@@ -1,1 +1,86 @@
-[]
+[
+  {
+    "id": "place-9",
+    "name": "云南",
+    "country": "中国",
+    "admin1": "云南",
+    "admin2": "",
+    "locality": "",
+    "site_name": "",
+    "latitude": null,
+    "longitude": null,
+    "elevation_m": null,
+    "description": null,
+    "merged_into_id": null
+  },
+  {
+    "id": "place-10",
+    "name": "云南省",
+    "country": "中国",
+    "admin1": "云南省",
+    "admin2": "",
+    "locality": "",
+    "site_name": "",
+    "latitude": null,
+    "longitude": null,
+    "elevation_m": null,
+    "description": null,
+    "merged_into_id": null
+  },
+  {
+    "id": "place-11",
+    "name": "普洱市",
+    "country": "中国",
+    "admin1": "云南省",
+    "admin2": "普洱市",
+    "locality": "",
+    "site_name": "",
+    "latitude": null,
+    "longitude": null,
+    "elevation_m": null,
+    "description": null,
+    "merged_into_id": null
+  },
+  {
+    "id": "place-12",
+    "name": "普洱市澜沧拉祜族自治县",
+    "country": "中国",
+    "admin1": "云南省",
+    "admin2": "普洱市澜沧拉祜族自治县",
+    "locality": "",
+    "site_name": "",
+    "latitude": null,
+    "longitude": null,
+    "elevation_m": null,
+    "description": null,
+    "merged_into_id": null
+  },
+  {
+    "id": "place-13",
+    "name": "岩",
+    "country": "中国",
+    "admin1": "云南省",
+    "admin2": "普洱市澜沧拉祜族自治县",
+    "locality": "岩",
+    "site_name": "",
+    "latitude": 22.392574,
+    "longitude": 99.933593,
+    "elevation_m": 1259,
+    "description": null,
+    "merged_into_id": null
+  },
+  {
+    "id": "place-14",
+    "name": "岩因村",
+    "country": "中国",
+    "admin1": "云南省",
+    "admin2": "普洱市澜沧拉祜族自治县",
+    "locality": "岩因村",
+    "site_name": "",
+    "latitude": 22.392574,
+    "longitude": 99.933593,
+    "elevation_m": 1259,
+    "description": null,
+    "merged_into_id": null
+  }
+]

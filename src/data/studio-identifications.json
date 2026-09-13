@@ -1,1 +1,14 @@
-[]
+[
+  {
+    "id": "studio-45",
+    "observation_id": "studio-23",
+    "taxon_id": "tax-wt-neobrettus-tibialis",
+    "display_identification": "Neobrettus tibialis",
+    "identified_by_profile_id": null,
+    "identified_by_text": "咩咩",
+    "identified_at": "2026-09-13",
+    "evidence": "field",
+    "remarks": null,
+    "is_current": true
+  }
+]
