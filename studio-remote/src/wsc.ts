@@ -174,13 +174,17 @@ export interface SpeciesSuggestion { epithet: string; status: string }
 
 /** 属下物种预测：返回该属全部组合及状态（客户端过滤 ACCEPTED），WSC 不可达返回 null */
 export async function suggestSpecies(env: Env, genus: string): Promise<SpeciesSuggestion[] | null> {
-  const key = 'complete:species:' + genus.toLowerCase();
+  // v2：旧正则的 [^-]* 会被含连字符的作者名（如 O. Pickard-Cambridge）截断导致漏种；
+  // 换 tempered-dot 并升缓存键版本，让已缓存的残缺结果自然失效
+  const key = 'complete:species:v2:' + genus.toLowerCase();
   const hit = await cachedPayload(env, key, 14);
   if (hit) return hit as SpeciesSuggestion[];
   const html = await fetchWsc(`/search?searchType=genus&query=${encodeURIComponent(genus)}`);
   if (html == null) return null;
   const combos = [
-    ...html.matchAll(/<em>([A-Za-z][a-z-]+)\s+([a-z-]+)<\/em>\s*[^-]*-\s*<span[^>]*>\s*([A-Z]+)/g),
+    ...html.matchAll(
+      /<em>([A-Za-z][a-z-]+)\s+([a-z-]+)<\/em>(?:(?!<em>)[\s\S])*?-\s*<span[^>]*>\s*([A-Z]+)/g,
+    ),
   ]
     .filter((m) => m[1].toLowerCase() === genus.toLowerCase())
     .map((m) => ({ epithet: m[2], status: m[3] }));
