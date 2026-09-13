@@ -350,12 +350,6 @@ const OBS_EDITOR_JS = `
     if (t) {
       var div = document.createElement('div');
       div.className = 'chosen-taxa';
-      var cnInput = document.createElement('input');
-      cnInput.type = 'text';
-      cnInput.className = 'sp-cn-input';
-      cnInput.placeholder = '中文名（选填，回车保存）';
-      cnInput.value = t.cn || '';
-      cnInput.maxLength = 60;
       var sn = document.createElement('span');
       sn.className = 'sn';
       sn.textContent = t.name + (t.rank !== 'species' && t.rank !== 'subspecies' ? ' sp.' : '');
@@ -363,37 +357,67 @@ const OBS_EDITOR_JS = `
       clearBtn.type = 'button';
       clearBtn.id = 'sp-clear';
       clearBtn.textContent = '更改';
-      div.appendChild(cnInput);
       div.appendChild(sn);
       div.appendChild(clearBtn);
       host.insertBefore(div, spInput);
       spInput.style.display = 'none';
-      function saveCn() {
-        var v = cnInput.value.trim().slice(0, 60);
-        if (v === (t.cn || '')) return;
-        cnInput.disabled = true;
-        ensureWorkingTaxon(t.name, v, function (nt) {
-          cnInput.disabled = false;
-          if (!nt) { setStatus('中文名保存失败，请重试', true); return; }
-          setStatus(v ? '中文名已保存：' + v : '已清除中文名');
-          renderChosen();
-        });
-      }
-      cnInput.addEventListener('blur', saveCn);
-      cnInput.addEventListener('keydown', function (ev) {
-        if (ev.key === 'Enter') { ev.preventDefault(); cnInput.blur(); }
-      });
       clearBtn.addEventListener('click', function () {
         window.__chosenSlug = '';
         div.remove();
         spInput.style.display = '';
         spInput.value = '';
         spInput.focus();
+        syncCnField();
         scheduleSave();
       });
     } else {
       spInput.style.display = '';
     }
+    syncCnField();
+  }
+
+  // 中文名独立字段（选填，不属于学名流程）：随所选类群回填；编辑后回车/失焦保存到该类群。
+  // 用文档级委托绑定（focusout/keydown 冒泡），对元素替换与脚本执行时机免疫
+  function syncCnField() {
+    var t = (boot.taxa || []).filter(function (x) { return x.slug === (window.__chosenSlug || ''); })[0];
+    var cnEl = $('#species-cn'), hintEl = $('#species-cn-hint');
+    if (!cnEl) return;
+    if (!t) {
+      cnEl.value = '';
+      cnEl.disabled = true;
+      if (hintEl) hintEl.textContent = '多数物种没有中文名，可留空；选定学名后可补，保存后显示在该物种页';
+      return;
+    }
+    cnEl.disabled = false;
+    cnEl.value = t.cn || '';
+    if (hintEl) hintEl.textContent = '当前学名：' + t.name + (t.cn ? '（已有中文名，可修改或清空后回车）' : '（选填）');
+  }
+
+  function saveCnField() {
+    var cnEl = $('#species-cn');
+    if (!cnEl || cnEl.disabled) return;
+    var t = (boot.taxa || []).filter(function (x) { return x.slug === (window.__chosenSlug || ''); })[0];
+    if (!t) return;
+    var v = cnEl.value.trim().slice(0, 60);
+    if (v === (t.cn || '')) return;
+    cnEl.disabled = true;
+    ensureWorkingTaxon(t.name, v, function (nt) {
+      cnEl.disabled = false;
+      if (!nt) { setStatus('中文名保存失败，请重试', true); return; }
+      setStatus(v ? '中文名已保存：' + v : '已清除中文名');
+      syncCnField();
+    });
+  }
+
+  if (!window.__cnFieldDelegated) {
+    window.__cnFieldDelegated = true;
+    document.addEventListener('keydown', function (ev) {
+      var el = ev.target;
+      if (el && el.id === 'species-cn' && ev.key === 'Enter') { ev.preventDefault(); el.blur(); }
+    });
+    document.addEventListener('focusout', function (ev) {
+      if (ev.target && ev.target.id === 'species-cn') saveCnField();
+    });
   }
 
   // ---- WSC 预测：属前缀 → 属列表；属名 → 该属 ACCEPTED 种列表（D1 缓存于服务端）----
@@ -482,7 +506,7 @@ const OBS_EDITOR_JS = `
           var name = spInput.value.trim();
           if (!name) return;
           var cn = /[\u4e00-\u9fa5]/.test(name) ? name : null;
-          if (cn) { setStatus('请先选定学名，再在旁侧输入框补充中文名', true); return; }
+          if (cn) { setStatus('学名框请填拉丁学名；中文名在下方「中文名（选填）」栏单独填写', true); return; }
           createWorkingAndSelect(name, null);
         });
       });

@@ -321,17 +321,18 @@ button.act-btn { cursor:pointer; }
 .species-pop .opt .sn { font-size:12.5px; color:var(--faint); font-style:italic; }
 .species-pop .none { padding:12px; color:var(--faint); font-size:13.5px; }
 .chosen-taxa { display:flex; align-items:center; gap:10px; padding:4px 0; }
-.chosen-taxa .cn { font-size:16px; }
-.chosen-taxa .sn { font-style:italic; color:var(--muted); font-size:13.5px; }
-.chosen-taxa .sp-cn-input {
-  width: 190px; background:none; border:none; border-bottom:1px dashed var(--line);
-  color:var(--ink); font-size:14.5px; padding:2px 4px; font-family:inherit;
-}
-.chosen-taxa .sp-cn-input:focus { outline:none; border-bottom-color: var(--terra); border-bottom-style: solid; }
-.chosen-taxa .sp-cn-input::placeholder { color: var(--faint); }
-.chosen-taxa .sp-cn-input:disabled { opacity: .5; }
+.chosen-taxa .sn { font-style:italic; color:var(--ink); font-size:15.5px; }
 .chosen-taxa button { background:none; border:none; color:var(--faint); font-size:12.5px; text-decoration:underline; text-underline-offset:3px; padding:0; }
 .chosen-taxa button:hover { color:var(--ink); }
+.cn-row { margin-top:8px; display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+#species-cn {
+  width:250px; background:none; border:none; border-bottom:1px dashed var(--line);
+  color:var(--ink); font-size:14.5px; padding:2px 4px; font-family:inherit;
+}
+#species-cn:focus { outline:none; border-bottom-color:var(--terra); border-bottom-style:solid; }
+#species-cn::placeholder { color:var(--faint); }
+#species-cn:disabled { opacity:.45; }
+.cn-row .hint { font-size:12px; }
 
 /* 坐标与地图 */
 .coords-row { display:flex; align-items:baseline; gap:8px; flex-wrap:wrap; }
@@ -966,6 +967,10 @@ export function obsEditorHtml(
       <div class="species-wrap" id="species-wrap">
         <input id="species-search" placeholder="搜索物种（学名 / 中文名），允许留空" autocomplete="off" />
         <div class="species-pop" id="species-pop"></div>
+      </div>
+      <div class="cn-row">
+        <input id="species-cn" placeholder="中文名（选填，如「高居腹猎蛛」）" maxlength="60" disabled autocomplete="off" />
+        <span class="hint" id="species-cn-hint">多数物种没有中文名，可留空；选定学名后可补，保存后显示在该物种页</span>
       </div>
       <div class="hint">不确定就留空，发布会记为 Salticidae sp.（跳蛛科未定种）；cf. / aff. / 工作编号都是合法状态</div>
     </section>
