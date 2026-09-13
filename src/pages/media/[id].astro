@@ -23,9 +23,21 @@ const next = idx >= 0 && idx < archive.length - 1 ? archive[idx + 1] : null;
 ---
 
 <Base title={`${media.public_id} · ${obs.identification_display ?? '未鉴定的跳蛛'}`} description={`${media.public_id} — ${obs.identification_display ?? '未鉴定的跳蛛'} 的影像记录。`}>
-  {/* --- 一张照片就是整个页面：完整构图，不裁切 --- */}
+  {/* --- 一张照片就是整个页面：完整构图，不裁切；两侧悬停出现前后切换 --- */}
   <figure class="md-hero">
-    <img src={media.large} alt={media.caption ?? media.public_id} fetchpriority="high" width={media.width} height={media.height} />
+    <div class="md-stage">
+      <img src={media.large} alt={media.caption ?? media.public_id} fetchpriority="high" width={media.width} height={media.height} />
+      {prev && (
+        <a class="md-arrow md-arrow-l" href={withBase(`/media/${prev.media.public_id}/`)} aria-label="上一张（←）" data-media-prev>
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="15 18 9 12 15 6" /></svg>
+        </a>
+      )}
+      {next && (
+        <a class="md-arrow md-arrow-r" href={withBase(`/media/${next.media.public_id}/`)} aria-label="下一张（→）" data-media-next>
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 18 15 12 9 6" /></svg>
+        </a>
+      )}
+    </div>
   </figure>
 
   {/* --- 图下刊头：编号 → 学名主标题 → 图注 --- */}
@@ -111,8 +123,32 @@ const next = idx >= 0 && idx < archive.length - 1 ? archive[idx + 1] : null;
       });
     });
   }
-  document.addEventListener('astro:page-load', initCopyId);
+  // 键盘 ←/→ 翻档（与悬停箭头同一对链接；window 级守卫防 View Transitions 重复绑定）
+  function initMediaKeys() {
+    const w = window as unknown as { __mdKeysBound?: boolean };
+    if (w.__mdKeysBound) return;
+    w.__mdKeysBound = true;
+    document.addEventListener('keydown', (e) => {
+      if (e.defaultPrevented || e.altKey || e.ctrlKey || e.metaKey) return;
+      const t = e.target as HTMLElement | null;
+      if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return;
+      const prevLink = document.querySelector<HTMLAnchorElement>('[data-media-prev]');
+      const nextLink = document.querySelector<HTMLAnchorElement>('[data-media-next]');
+      if (e.key === 'ArrowLeft' && prevLink) {
+        e.preventDefault();
+        prevLink.click();
+      } else if (e.key === 'ArrowRight' && nextLink) {
+        e.preventDefault();
+        nextLink.click();
+      }
+    });
+  }
+  document.addEventListener('astro:page-load', () => {
+    initCopyId();
+    initMediaKeys();
+  });
   initCopyId();
+  initMediaKeys();
 </script>
 
 <style>
@@ -120,9 +156,32 @@ const next = idx >= 0 && idx < archive.length - 1 ? archive[idx + 1] : null;
   .md-hero {
     margin: var(--s-5) auto 0; max-width: var(--content-wide); padding: 0 24px;
   }
+  .md-stage { position: relative; }
   .md-hero img {
     width: 100%; height: auto; max-height: 80vh; object-fit: contain;
     background: var(--paper-deep); display: block;
+  }
+
+  /* --- 照片两侧前后切换：悬停或键盘聚焦出现；触屏隐藏（保留底部文字链接） --- */
+  .md-arrow {
+    position: absolute; top: 50%; transform: translateY(-50%);
+    display: flex; align-items: center; justify-content: center;
+    width: 44px; height: 44px; border-radius: 50%;
+    color: var(--ink); text-decoration: none;
+    background: color-mix(in srgb, var(--paper) 72%, transparent);
+    border: 1px solid color-mix(in srgb, var(--line) 92%, transparent);
+    backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+    box-shadow: 0 1px 8px rgba(24, 19, 12, 0.16);
+    opacity: 0; transition: opacity 0.16s ease, background 0.16s ease, color 0.16s ease;
+  }
+  .md-arrow-l { left: 16px; }
+  .md-arrow-r { right: 16px; }
+  .md-stage:hover .md-arrow,
+  .md-stage:focus-within .md-arrow,
+  .md-arrow:focus-visible { opacity: 1; }
+  .md-arrow:hover { background: color-mix(in srgb, var(--paper) 92%, transparent); color: var(--terra); }
+  @media (hover: none) {
+    .md-arrow { display: none; }
   }
 
   /* --- 图下刊头 --- */
