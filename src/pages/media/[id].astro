@@ -1,7 +1,7 @@
 ---
 export const prerender = true;
 import Base from '../../layouts/Base.astro';
-import { getAllPublicMedia, getPublicMediaDetail } from '../../lib/queries';
+import { getAllPublicMedia, getPublicMediaDetail, chineseNameOfSlug } from '../../lib/queries';
 import { withBase } from '../../lib/privacy';
 import { VIEW_TYPE_ZH, LICENSE_ZH, EVIDENCE_ZH } from '../../lib/labels';
 import { formatDate, sciNameHtml } from '../../lib/format';
@@ -50,6 +50,9 @@ const next = idx >= 0 && idx < archive.length - 1 ? archive[idx + 1] : null;
         </a>
       ) : (
         <span>未鉴定的跳蛛</span>
+      )}
+      {obs.identification_slug && chineseNameOfSlug(obs.identification_slug) && (
+        <span class="md-zh">{chineseNameOfSlug(obs.identification_slug)}</span>
       )}
     </h1>
     {media.caption && <p class="md-caption">{media.caption}</p>}
@@ -192,6 +195,7 @@ const next = idx >= 0 && idx < archive.length - 1 ? archive[idx + 1] : null;
     font-size: clamp(28px, 4vw, 44px); margin: var(--s-2) 0 0;
   }
   .md-name a { color: inherit; text-decoration: none; }
+  .md-zh { font-size: 0.36em; font-family: var(--sans); font-style: normal; font-weight: 400; color: var(--muted); margin-left: 14px; letter-spacing: 0.06em; vertical-align: middle; }
   .md-caption { font-size: 17px; line-height: 1.9; color: var(--ink); margin: var(--s-3) 0 0; max-width: 680px; }
   .md-line { margin-top: var(--s-3); font-size: 13.5px; color: var(--muted); letter-spacing: 0.03em; }
 

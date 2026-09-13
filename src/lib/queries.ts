@@ -18,6 +18,7 @@ import {
   posts,
   profiles,
   taxa,
+  taxonBySlug,
   taxonById,
 } from './store';
 import type { Taxon, TaxonRank } from './types';
@@ -219,7 +220,7 @@ export interface LocalityCard {
   elevation: number | null;
   count: number;
   habitats: string[];
-  cover: { thumb: string; medium: string; large: string } | null;
+  cover: { thumb: string; medium: string; large: string; view_type: string } | null;
   /** 对应的地点实体（存在时卡片链接到 /places/[id]/） */
   place_id: string | null;
 }
@@ -227,6 +228,12 @@ export interface LocalityCard {
 /** 观察所属的地点实体（toPublicObservation 已解析合并跳转与位置记录标注） */
 export function observationPlaceId(o: PublicObservation): string | null {
   return o.place_id;
+}
+
+/** 鉴定类群 slug → 物种中文名（无中文名或未知类群返回 null），供各页面在学名旁展示 */
+export function chineseNameOfSlug(slug: string | null | undefined): string | null {
+  if (!slug) return null;
+  return taxonBySlug.get(slug)?.chinese_name ?? null;
 }
 
 export function getLocalityCards(): LocalityCard[] {
@@ -254,8 +261,11 @@ export function getLocalityCards(): LocalityCard[] {
     const pid = observationPlaceId(o);
     if (pid && !card.place_id) card.place_id = pid;
     if (o.habitat && !card.habitats.includes(o.habitat)) card.habitats.push(o.habitat);
-    if (!card.cover && o.cover) {
-      card.cover = { thumb: o.cover.thumb, medium: o.cover.medium, large: o.cover.large };
+    // 封面层级（§110 修订）：生境 > 行为 > 其他——蜘蛛肖像只在没有环境影像时兜底
+    if (o.cover) {
+      const rank = (v: string) => (v === 'habitat' ? 2 : v === 'behavior' ? 1 : 0);
+      const cand = { thumb: o.cover.thumb, medium: o.cover.medium, large: o.cover.large, view_type: o.cover.view_type };
+      if (!card.cover || rank(cand.view_type) > rank(card.cover.view_type)) card.cover = cand;
     }
   }
   return [...byLocality.values()].sort((a, b) => b.count - a.count);
@@ -366,10 +376,10 @@ export function getPlacePage(id: string): PlacePageData | undefined {
       }
     }
   }
-  // §110：蜘蛛 macro 不得替代生境 Hero——生境照优先，行为照（通常含环境）次之，否则中性占位（§13）
+  // §110（修订）：生境照优先，行为照次之；都没有时用该地点现有的照片兜底，不再留占位
   const habitatTyped = allPhotos.filter((m) => m.view_type === 'habitat');
   const behaviorTyped = allPhotos.filter((m) => m.view_type === 'behavior' && m.width > m.height);
-  const heroPhoto = habitatTyped[0] ?? behaviorTyped[0] ?? null;
+  const heroPhoto = habitatTyped[0] ?? behaviorTyped[0] ?? allPhotos[0] ?? null;
   const habitatPhotos = habitatTyped.slice(0, 4);
   const obsIds = new Set(observations.map((o) => o.public_id));
   const posts = getPublishedPosts()

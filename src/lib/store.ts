@@ -174,6 +174,7 @@ validate();
 
 export const profileById = new Map(profiles.map((p) => [p.id, p]));
 export const taxonById = new Map(taxa.map((t) => [t.id, t]));
+export const taxonBySlug = new Map(taxa.filter((t) => t.slug).map((t) => [t.slug, t]));
 export const locationById = new Map(locations.map((l) => [l.id, l]));
 export const observationById = new Map(observations.map((o) => [o.id, o]));
 export const mediaByObservation = new Map<string, MediaRecord[]>();

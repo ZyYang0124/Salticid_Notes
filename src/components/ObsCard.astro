@@ -4,12 +4,14 @@ import type { PublicObservation } from '../lib/privacy';
 import { formatDate, shortRegion } from '../lib/format';
 import PictureImage from './PictureImage.astro';
 import SciName from './SciName.astro';
+import { chineseNameOfSlug } from '../lib/queries';
 
 interface Props {
   obs: PublicObservation;
 }
 
 const { obs } = Astro.props;
+const cn = obs.identification ? chineseNameOfSlug(obs.identification.taxon_slug) : null;
 ---
 
 <a class="obs-card" href={obs.url}>
@@ -32,6 +34,7 @@ const { obs } = Astro.props;
       ) : (
         <span class="no-id">未鉴定的跳蛛</span>
       )}
+      {cn && <span class="cn-name">{cn}</span>}
     </div>
     <div class="sub">
       {formatDate(obs.observed_at, obs.observed_at_precision)} · {shortRegion(obs.location)}
