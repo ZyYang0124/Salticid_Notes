@@ -746,7 +746,8 @@ app.post('/studio/api/profile', async (c) => {
   const title = String(b.title ?? '').trim().slice(0, 80) || null;
   const bio = String(b.bio ?? '').trim().slice(0, 400) || null;
   let photoMediaId: number | null = null;
-  if (b.photo_public_id && /^SFN-M-\d{6}$/.test(b.photo_public_id)) {
+  // 照片编号现行为 SN-YYYY-NNNNN；SFN-M-\d{6} 为迁移前历史格式（旧页面缓存仍可能发来，继续接受）
+  if (b.photo_public_id && /^(?:SN-\d{4}-\d{5}|SFN-M-\d{6})$/.test(b.photo_public_id)) {
     const m = await get<{ id: number }>(c.env.DB, 'SELECT id FROM media WHERE public_id = ?', b.photo_public_id);
     photoMediaId = m?.id ?? null;
   }

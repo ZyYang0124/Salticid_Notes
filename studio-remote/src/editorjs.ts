@@ -1421,6 +1421,13 @@ export const PROFILE_SCRIPT = UPLOAD_LIB + `
     inp.addEventListener('change', function () {
       var f = inp.files[0];
       if (!f) return;
+      // HEIC 必须在这里拦下：createImageBitmap 解不了 HEIC，是「点了没反应」的常见来源（与观察编辑器同一话术）
+      var lname = (f.name || '').toLowerCase();
+      var isHeic = (f.type && f.type.indexOf('hei') !== -1) || lname.indexOf('.heic') !== -1 || lname.indexOf('.heif') !== -1;
+      if (isHeic || (f.type && f.type !== 'image/jpeg' && f.type !== 'image/png')) {
+        setStatus('照片上传失败：只接受 JPG / PNG 原图（iPhone 相机默认 HEIC 不受支持，可在相机设置改为「兼容性最佳」）', true);
+        return;
+      }
       setStatus('正在处理照片…');
       window.__sfnPrepareUpload(f).then(function (prepared) {
         var fd = new FormData();
@@ -1432,7 +1439,9 @@ export const PROFILE_SCRIPT = UPLOAD_LIB + `
         slot.innerHTML = '<img src="/media/derivatives/' + j.public_id + '-480.jpg" alt="" />';
         slot.removeAttribute('data-empty');
         setStatus('照片已上传 · 记得点「保存资料」');
-      }).catch(function () { setStatus('照片处理失败', true); });
+      }).catch(function (e) {
+        setStatus('照片处理失败：' + ((e && e.message) || '请换一张 JPG/PNG 原图重试'), true);
+      });
     });
     inp.click();
   });

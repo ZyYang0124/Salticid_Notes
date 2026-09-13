@@ -541,7 +541,7 @@ const audits = d1(`SELECT COUNT(*) AS c FROM audit_logs WHERE entity_id = '${pid
 ok((revs[0]?.c ?? 0) >= 1 && (audits[0]?.c ?? 0) >= 1, `F1 编号不变、修订 ${revs[0]?.c} 条、审计 ${audits[0]?.c} 条`);
 
 // ---------- 场景 E：编辑器脚本语法体检（防「整体解析失败」类回归） ----------
-for (const scriptPath of ['/studio-editor.js', '/studio-note-editor.js']) {
+for (const scriptPath of ['/studio-editor.js', '/studio-note-editor.js', '/studio-profile.js']) {
   const res = await fetchRetry(BASE + scriptPath, {});
   const src = await res.text();
   let parseOk = true;
