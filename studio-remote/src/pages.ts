@@ -438,8 +438,6 @@ details.more .grid { display:grid; grid-template-columns:1fr 1fr 1fr; gap:0 22px
   .rail-nav a:hover { color:var(--ink); background:var(--paper-soft); }
   .rail-nav a i { font-style:normal; color:var(--terra); font-weight:700; visibility:hidden; }
   .rail-nav a.done i { visibility:visible; }
-  .rail-actions { display:flex; flex-direction:column; gap:10px; border-top:1px solid var(--line-soft); padding-top:18px; }
-  .rail-actions .publish { width:100%; }
 }
 @media (max-width:1099px) { .ed-rail { display:none; } }
 /* ---- 发布按钮：唯一红色 CTA（§47） ---- */
@@ -996,17 +994,13 @@ export function obsEditorHtml(
     </details>
   </main>
 
-  <aside class="ed-rail" aria-label="进度与发布">
+  <aside class="ed-rail" aria-label="进度">
     <nav class="rail-nav" id="rail-nav">
       <a href="#sec-photos" data-sec="photos">照片<i></i></a>
       <a href="#sec-time" data-sec="time">时间与地点<i></i></a>
       <a href="#sec-id" data-sec="id">鉴定<i></i></a>
       <a href="#sec-note" data-sec="note">野外笔记<i></i></a>
     </nav>
-    <div class="rail-actions">
-      <button type="button" class="ghost" id="rail-savedraft">保存草稿</button>
-      <button type="button" class="publish" id="rail-publish">${meta.status === 'archived' ? '恢复为草稿' : meta.status === 'published' ? '保存修改' : '发布'}</button>
-    </div>
   </aside>
   </div>
 

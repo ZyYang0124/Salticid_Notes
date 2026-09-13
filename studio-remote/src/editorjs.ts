@@ -1388,8 +1388,8 @@ const NOTE_EDITOR_JS = `
     if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') $('#btn-publish-note').click();
   });
 
-  // ---- 右栏（§8）：分节状态 ✓ + 按钮联动 + Ctrl+S ----
-  var railNav = $('#rail-nav'), railPub = $('#rail-publish'), railDraft = $('#rail-savedraft');
+  // ---- 右栏（§8）：分节状态 ✓ + 平滑滚动 + Ctrl+S ----
+  var railNav = $('#rail-nav');
   function updateRail() {
     if (!railNav) return;
     var done = {
@@ -1415,16 +1415,6 @@ const NOTE_EDITOR_JS = `
       if (t) t.scrollIntoView({ behavior: 'smooth', block: 'start' });
     });
   }
-  function railClick(action) {
-    var map = { savedraft: $('#btn-savedraft'), publish: $('#btn-publish') };
-    var target = map[action];
-    if (target) target.click();
-  }
-  // 已发布记录：右栏主按钮文案跟随「保存修改」（§37）
-  if (railPub && status === 'published') railPub.textContent = '保存修改';
-  if (railPub && status === 'archived') railPub.textContent = '恢复为草稿';
-  if (railDraft) railDraft.addEventListener('click', function () { railClick('savedraft'); });
-  if (railPub) railPub.addEventListener('click', function () { railClick('publish'); });
   document.addEventListener('keydown', function (e) {
     if ((e.metaKey || e.ctrlKey) && e.key === 's') { e.preventDefault(); $('#btn-savedraft').click(); }
   });
