@@ -257,6 +257,7 @@ a:hover { color: var(--terra); }
 .strip-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 22px 18px; }
 @media (max-width: 1100px) { .strip-grid { grid-template-columns: repeat(3, 1fr); } }
 @media (max-width: 640px) { .strip-grid { grid-template-columns: repeat(2, 1fr); gap: 20px 14px; } }
+@media (max-width: 640px) { .gallery { columns: 2; column-gap: 12px; } .gallery figure { margin-bottom: 12px; } }
 .strip-grid .obs-card .frame { aspect-ratio: 4 / 3; }
 .strip-grid .obs-card .name { font-size: 15px; }
 .obs-card { display: block; }
@@ -328,9 +329,10 @@ a:hover { color: var(--terra); }
 
 /* ---------- 图库 ---------- */
 
-.gallery { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 14px; padding: 8px 0 24px; }
-.gallery figure { margin: 0; position: relative; background: var(--paper-deep); cursor: zoom-in; overflow: hidden; }
-.gallery img { width: 100%; height: 210px; object-fit: cover; transition: transform var(--motion-normal) var(--ease-out); }
+/* 观察图库：natural-ratio masonry（§39）——保留每张照片的原始构图，不裁切主体 */
+.gallery { columns: 260px; column-gap: 16px; padding: 8px 0 24px; }
+.gallery figure { margin: 0 0 16px; position: relative; background: var(--paper-deep); cursor: zoom-in; overflow: hidden; break-inside: avoid; }
+.gallery img { width: 100%; height: auto; display: block; transition: transform var(--motion-normal) var(--ease-out); }
 .gallery figure:hover img { transform: scale(1.03); }
 .gallery figcaption { font-size: 12.5px; color: var(--muted); padding: 8px 10px 10px; }
 .gallery .vt { position: absolute; top: 8px; left: 8px; font-size: 11px; padding: 1px 8px; background: rgba(20,17,12,0.55); color: #f0ede5; letter-spacing: 0.08em; border-radius: 2px; }

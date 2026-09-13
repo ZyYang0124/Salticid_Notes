@@ -258,8 +258,8 @@ const gallery = obs.media.filter((m) => m.id !== obs.cover?.id);
 <style>
   /* ---- 上半页：相遇 ---- */
   .obs-hero { margin: var(--s-4) auto 0; max-width: var(--content-wide); padding: 0 24px; }
-  .obs-hero-media { cursor: zoom-in; overflow: hidden; background: var(--paper-deep); aspect-ratio: 21 / 9; }
-  .obs-hero-media :global(img) { width: 100%; height: auto; max-height: 76vh; object-fit: cover; display: block; }
+  .obs-hero-media { cursor: zoom-in; overflow: hidden; background: var(--paper-deep); }
+  .obs-hero-media :global(img) { width: 100%; height: auto; max-height: 78vh; object-fit: contain; display: block; }
 
   .obs-head { padding: var(--s-6) 0 0; }
   .obs-head h1 {
