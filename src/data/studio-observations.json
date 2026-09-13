@@ -19,5 +19,26 @@
     "field_note": "本物种观察于田谷间沼泽水源附近的芭蕉树叶，轻抖芭蕉叶可掉落相当数量个体。",
     "status": "published",
     "visibility": "public"
+  },
+  {
+    "id": "studio-24",
+    "public_id": "SFN-2026-000033",
+    "place_id": "place-17",
+    "created_by": "prof-zhiyong",
+    "observer": "prof-zhiyong",
+    "observed_at": "2026-09-13",
+    "observed_at_precision": "day",
+    "location_id": "loc-studio-24",
+    "sex": "male",
+    "life_stage": "adult",
+    "count": 1,
+    "habitat": null,
+    "microhabitat": "栏杆",
+    "behavior": null,
+    "plant": null,
+    "weather": "晴天",
+    "field_note": "晴天，发现于栏杆。",
+    "status": "published",
+    "visibility": "public"
   }
 ]

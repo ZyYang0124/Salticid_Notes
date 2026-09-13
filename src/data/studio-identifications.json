@@ -10,5 +10,17 @@
     "evidence": "field",
     "remarks": null,
     "is_current": true
+  },
+  {
+    "id": "studio-60",
+    "observation_id": "studio-24",
+    "taxon_id": "tax-wt-myrmaplata-plataleoides",
+    "display_identification": "Myrmaplata plataleoides",
+    "identified_by_profile_id": null,
+    "identified_by_text": "咩咩",
+    "identified_at": "2026-09-13",
+    "evidence": "field",
+    "remarks": null,
+    "is_current": true
   }
 ]

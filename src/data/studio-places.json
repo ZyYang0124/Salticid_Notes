@@ -82,5 +82,47 @@
     "elevation_m": 1259,
     "description": null,
     "merged_into_id": null
+  },
+  {
+    "id": "place-15",
+    "name": "西双版纳傣族自治州",
+    "country": "中国",
+    "admin1": "云南省",
+    "admin2": "西双版纳傣族自治州",
+    "locality": "",
+    "site_name": "",
+    "latitude": null,
+    "longitude": null,
+    "elevation_m": null,
+    "description": null,
+    "merged_into_id": null
+  },
+  {
+    "id": "place-16",
+    "name": "西双版纳傣族自治州景洪市",
+    "country": "中国",
+    "admin1": "云南省",
+    "admin2": "西双版纳傣族自治州景洪市",
+    "locality": "",
+    "site_name": "",
+    "latitude": null,
+    "longitude": null,
+    "elevation_m": null,
+    "description": null,
+    "merged_into_id": null
+  },
+  {
+    "id": "place-17",
+    "name": "景洪市",
+    "country": "中国",
+    "admin1": "云南省",
+    "admin2": "西双版纳傣族自治州景洪市",
+    "locality": "景洪市",
+    "site_name": "原始森林公园",
+    "latitude": 22.027999,
+    "longitude": 100.875445,
+    "elevation_m": null,
+    "description": null,
+    "merged_into_id": null
   }
 ]

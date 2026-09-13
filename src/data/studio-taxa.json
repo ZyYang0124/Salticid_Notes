@@ -9,5 +9,16 @@
     "status": "working",
     "slug": "neobrettus-tibialis",
     "personal_note": null
+  },
+  {
+    "id": "tax-wt-myrmaplata-plataleoides",
+    "rank": "species",
+    "scientific_name": "Myrmaplata plataleoides",
+    "authorship": null,
+    "chinese_name": "黄蚁蛛",
+    "parent_id": null,
+    "status": "working",
+    "slug": "myrmaplata-plataleoides",
+    "personal_note": null
   }
 ]

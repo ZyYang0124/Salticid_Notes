@@ -10,5 +10,17 @@
     "latitude": 22.392574,
     "longitude": 99.933593,
     "elevation_m": 1259
+  },
+  {
+    "id": "loc-studio-24",
+    "country_code": "",
+    "country_name": "中国",
+    "admin1": "云南省",
+    "admin2": "西双版纳傣族自治州景洪市",
+    "locality": "景洪市",
+    "site_name": "原始森林公园",
+    "latitude": 22.027999,
+    "longitude": 100.875445,
+    "elevation_m": 796
   }
 ]
