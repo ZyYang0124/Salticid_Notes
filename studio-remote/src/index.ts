@@ -783,8 +783,11 @@ app.post('/studio/api/taxa', async (c) => {
   if (!res.ok) return c.json({ error: res.error }, res.status as 400 | 409);
   if (res.created) {
     await audit(c.env, u.display_name, 'taxon', res.taxon.slug, 'working-taxon.created', { name: res.taxon.name });
+  } else if (res.cnUpdated) {
+    // 协作者也可补录中文名（不动学名），记入审计流
+    await audit(c.env, u.display_name, 'taxon', res.taxon.slug, 'working-taxon.cn-updated', { cn: res.taxon.cn });
   }
-  return c.json({ ok: true, taxon: res.taxon, created: res.created });
+  return c.json({ ok: true, taxon: res.taxon, created: res.created, cnUpdated: res.cnUpdated === true });
 });
 
 // ---------- 工作编号管理（分类学变动流）：改名 / 合并 ----------

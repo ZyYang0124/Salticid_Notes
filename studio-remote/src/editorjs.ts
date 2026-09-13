@@ -350,10 +350,40 @@ const OBS_EDITOR_JS = `
     if (t) {
       var div = document.createElement('div');
       div.className = 'chosen-taxa';
-      div.innerHTML = '<span class="cn">' + escHtml(t.cn || (t.working ? '工作编号' : '')) + '</span><span class="sn">' + escHtml(t.name) + '</span><button type="button" id="sp-clear">更改</button>';
+      var cnInput = document.createElement('input');
+      cnInput.type = 'text';
+      cnInput.className = 'sp-cn-input';
+      cnInput.placeholder = '中文名（选填，回车保存）';
+      cnInput.value = t.cn || '';
+      cnInput.maxLength = 60;
+      var sn = document.createElement('span');
+      sn.className = 'sn';
+      sn.textContent = t.name;
+      var clearBtn = document.createElement('button');
+      clearBtn.type = 'button';
+      clearBtn.id = 'sp-clear';
+      clearBtn.textContent = '更改';
+      div.appendChild(cnInput);
+      div.appendChild(sn);
+      div.appendChild(clearBtn);
       host.insertBefore(div, spInput);
       spInput.style.display = 'none';
-      div.querySelector('#sp-clear').addEventListener('click', function () {
+      function saveCn() {
+        var v = cnInput.value.trim().slice(0, 60);
+        if (v === (t.cn || '')) return;
+        cnInput.disabled = true;
+        ensureWorkingTaxon(t.name, v, function (nt) {
+          cnInput.disabled = false;
+          if (!nt) { setStatus('中文名保存失败，请重试', true); return; }
+          setStatus(v ? '中文名已保存：' + v : '已清除中文名');
+          renderChosen();
+        });
+      }
+      cnInput.addEventListener('blur', saveCn);
+      cnInput.addEventListener('keydown', function (ev) {
+        if (ev.key === 'Enter') { ev.preventDefault(); cnInput.blur(); }
+      });
+      clearBtn.addEventListener('click', function () {
         window.__chosenSlug = '';
         div.remove();
         spInput.style.display = '';
@@ -385,14 +415,17 @@ const OBS_EDITOR_JS = `
   }
   function ensureWorkingTaxon(name, cn, cb) {
     var known = boot.taxa.filter(function (t) { return t.name.toLowerCase() === name.toLowerCase(); })[0];
-    if (known) { cb(known); return; }
+    // 类群已知且无中文名变动 → 免请求；有变动（含清空为空串）→ 服务端更新该类群的中文名
+    if (known && (cn == null || cn === known.cn)) { cb(known); return; }
     fetch('/studio/api/taxa', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       credentials: 'same-origin',
-      body: JSON.stringify({ name: name, chinese_name: cn || null })
+      body: JSON.stringify({ name: name, chinese_name: cn == null ? null : cn })
     }).then(readJson).then(function (j) {
       if (j && j.ok) {
-        if (!boot.taxa.some(function (t) { return t.slug === j.taxon.slug; })) boot.taxa.push(j.taxon);
+        var found = -1;
+        for (var i = 0; i < boot.taxa.length; i++) if (boot.taxa[i].slug === j.taxon.slug) { found = i; break; }
+        if (found >= 0) boot.taxa[found] = j.taxon; else boot.taxa.push(j.taxon);
         cb(j.taxon);
       } else cb(null);
     }).catch(function () { cb(null); });
@@ -451,7 +484,7 @@ const OBS_EDITOR_JS = `
           var name = spInput.value.trim();
           if (!name) return;
           var cn = /[\u4e00-\u9fa5]/.test(name) ? name : null;
-          if (cn) { setStatus('中文名请在选定学名后补充，或到「类群管理」维护', true); return; }
+          if (cn) { setStatus('请先选定学名，再在旁侧输入框补充中文名', true); return; }
           createWorkingAndSelect(name, null);
         });
       });

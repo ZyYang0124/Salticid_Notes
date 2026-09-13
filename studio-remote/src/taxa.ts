@@ -147,10 +147,11 @@ export async function mergeWorkingTaxon(
 }
 
 export type CreateTaxonResult =
-  | { ok: true; taxon: TaxonOption; created: boolean }
+  | { ok: true; taxon: TaxonOption; created: boolean; cnUpdated?: boolean }
   | { ok: false; error: string; status: number };
 
-/** 建立（或复用）工作编号；与正式类群重名时拒绝 */
+/** 建立（或复用）工作编号；与正式类群重名时拒绝。
+ *  chineseName 语义与 renameWorkingTaxon 一致：null/undefined = 不动；空串 = 清空；非空 = 设置。 */
 export async function createWorkingTaxon(env: Env, rawName: string, actor: string, chineseName?: string | null): Promise<CreateTaxonResult> {
   const name = rawName.trim().replace(/\s+/g, ' ');
   if (!NAME_RE.test(name)) {
@@ -163,10 +164,22 @@ export async function createWorkingTaxon(env: Env, rawName: string, actor: strin
   }
   const existing = await get<WorkingTaxonRow>(env.DB, 'SELECT * FROM working_taxa WHERE slug = ?', slug);
   if (existing) {
+    // 已存在（可能是早前登记的正式学名或工作编号）：允许补录 / 修改中文名
+    let cn = existing.chinese_name;
+    let cnUpdated = false;
+    if (chineseName != null) {
+      const next = String(chineseName).trim().slice(0, 60) || null;
+      if (next !== cn) {
+        cn = next;
+        cnUpdated = true;
+        await run(env.DB, 'UPDATE working_taxa SET chinese_name = ? WHERE slug = ?', cn, slug);
+      }
+    }
     return {
       ok: true,
       created: false,
-      taxon: { slug: existing.slug, name: existing.scientific_name, cn: existing.chinese_name, rank: existing.rank, working: true },
+      cnUpdated,
+      taxon: { slug: existing.slug, name: existing.scientific_name, cn, rank: existing.rank, working: true },
     };
   }
   const cn = chineseName ? String(chineseName).trim().slice(0, 60) || null : null;

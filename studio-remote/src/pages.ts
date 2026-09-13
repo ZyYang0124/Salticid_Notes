@@ -323,6 +323,13 @@ button.act-btn { cursor:pointer; }
 .chosen-taxa { display:flex; align-items:center; gap:10px; padding:4px 0; }
 .chosen-taxa .cn { font-size:16px; }
 .chosen-taxa .sn { font-style:italic; color:var(--muted); font-size:13.5px; }
+.chosen-taxa .sp-cn-input {
+  width: 190px; background:none; border:none; border-bottom:1px dashed var(--line);
+  color:var(--ink); font-size:14.5px; padding:2px 4px; font-family:inherit;
+}
+.chosen-taxa .sp-cn-input:focus { outline:none; border-bottom-color: var(--terra); border-bottom-style: solid; }
+.chosen-taxa .sp-cn-input::placeholder { color: var(--faint); }
+.chosen-taxa .sp-cn-input:disabled { opacity: .5; }
 .chosen-taxa button { background:none; border:none; color:var(--faint); font-size:12.5px; text-decoration:underline; text-underline-offset:3px; padding:0; }
 .chosen-taxa button:hover { color:var(--ink); }
 
