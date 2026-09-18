@@ -1,1 +1,134 @@
-[]
+[
+  {
+    "id": "tax-salticidae",
+    "rank": "family",
+    "scientific_name": "Salticidae",
+    "authorship": "Blackwall, 1841",
+    "chinese_name": "跳蛛科",
+    "parent_id": null,
+    "status": "accepted",
+    "slug": "salticidae",
+    "personal_note": null
+  },
+  {
+    "id": "tax-chrysillini",
+    "rank": "tribe",
+    "scientific_name": "Chrysillini",
+    "authorship": "Simon, 1901",
+    "chinese_name": null,
+    "parent_id": "tax-salticidae",
+    "status": "accepted",
+    "slug": "chrysillini",
+    "personal_note": null
+  },
+  {
+    "id": "tax-siler",
+    "rank": "genus",
+    "scientific_name": "Siler",
+    "authorship": "Simon, 1889",
+    "chinese_name": "翠蛛属",
+    "parent_id": "tax-chrysillini",
+    "status": "accepted",
+    "slug": "siler",
+    "personal_note": "华南林缘灌丛中最常遇见的一类小型跳蛛。雄蛛的金属蓝绿色头胸部在阳光下极易辨认，求偶时第一对步足高举，腹部翘起，非常醒目。属内一些类群的鉴定仍需借助生殖器解剖。"
+  },
+  {
+    "id": "tax-siler-cupreus",
+    "rank": "species",
+    "scientific_name": "Siler cupreus",
+    "authorship": "(Karsch, 1879)",
+    "chinese_name": null,
+    "parent_id": "tax-siler",
+    "status": "accepted",
+    "slug": "siler-cupreus",
+    "personal_note": "多在阔叶林缘的叶片上表面活动，晴天的上午最活跃。雄蛛头胸部蓝绿金属色，腹部背面有白、橙、黑相间的横带；求偶时会在雌蛛面前反复转身翘腹。与近缘种的区别主要看触肢器与外雌器。"
+  },
+  {
+    "id": "tax-siler-semiglaucus",
+    "rank": "species",
+    "scientific_name": "Siler semiglaucus",
+    "authorship": "(Simon, 1901)",
+    "chinese_name": null,
+    "parent_id": "tax-siler",
+    "status": "accepted",
+    "slug": "siler-semiglaucus",
+    "personal_note": "西双版纳沟谷雨林里遇见的小型种类，体型比 S. cupreus 更小，体色偏金绿色。目前仅凭照片鉴定，与近缘种的界线有待检视标本后确认。"
+  },
+  {
+    "id": "tax-chrysilla",
+    "rank": "genus",
+    "scientific_name": "Chrysilla",
+    "authorship": "Thorell, 1887",
+    "chinese_name": null,
+    "parent_id": "tax-chrysillini",
+    "status": "accepted",
+    "slug": "chrysilla",
+    "personal_note": "身体明显延长、常带金属光泽的类群，第一对步足粗长。多见于林下叶面，受惊时常侧身绕到叶片背面躲避。"
+  },
+  {
+    "id": "tax-phintella",
+    "rank": "genus",
+    "scientific_name": "Phintella",
+    "authorship": "Strand, 1906",
+    "chinese_name": null,
+    "parent_id": "tax-chrysillini",
+    "status": "accepted",
+    "slug": "phintella",
+    "personal_note": "体色以浅黄与褐色纵纹为主的小型跳蛛，常见于灌丛与草丛叶片上。华东山地的个体与华南的个体在斑纹上有稳定差异，暂一并记为 Phintella sp.，等待标本核对。"
+  },
+  {
+    "id": "tax-heliophanus",
+    "rank": "genus",
+    "scientific_name": "Heliophanus",
+    "authorship": "C. L. Koch, 1833",
+    "chinese_name": null,
+    "parent_id": "tax-salticidae",
+    "status": "accepted",
+    "slug": "heliophanus",
+    "personal_note": null
+  },
+  {
+    "id": "tax-heliophanus-gd01",
+    "rank": "species",
+    "scientific_name": "Heliophanus sp. GD01",
+    "authorship": null,
+    "chinese_name": null,
+    "parent_id": "tax-heliophanus",
+    "status": "provisional",
+    "slug": "heliophanus-sp-gd01",
+    "personal_note": "本站自定编号的形态种（morphospecies）：广东从化秋冬季在林下枯叶上见到的黑色小型跳蛛，步足具白色环斑，具金属光泽。因缺乏标本与解剖资料，暂以 GD01 编号管理，鉴定存疑。"
+  },
+  {
+    "id": "tax-plexippus",
+    "rank": "genus",
+    "scientific_name": "Plexippus",
+    "authorship": "C. L. Koch, 1846",
+    "chinese_name": "蝇虎属",
+    "parent_id": "tax-salticidae",
+    "status": "accepted",
+    "slug": "plexippus",
+    "personal_note": null
+  },
+  {
+    "id": "tax-plexippus-paykulli",
+    "rank": "species",
+    "scientific_name": "Plexippus paykulli",
+    "authorship": "(Audouin, 1826)",
+    "chinese_name": null,
+    "parent_id": "tax-plexippus",
+    "status": "accepted",
+    "slug": "plexippus-paykulli",
+    "personal_note": "城市与村落中最常见的跳蛛之一，墙面、窗台、石堆上都能见到。北方城市秋季尤其活跃。"
+  },
+  {
+    "id": "tax-siler-cf-cupreus",
+    "rank": "species",
+    "scientific_name": "Siler cf. cupreus",
+    "authorship": null,
+    "chinese_name": null,
+    "parent_id": "tax-siler",
+    "status": "working",
+    "slug": "siler-cf-cupreus",
+    "personal_note": null
+  }
+]
