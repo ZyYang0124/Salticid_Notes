@@ -112,6 +112,20 @@
     "visibility": "public"
   },
   {
+    "id": "SN-2026-00030",
+    "public_id": "SN-2026-00030",
+    "observation_id": "studio-25",
+    "source_original": "media/originals/SN-2026-00030.jpg",
+    "view_type": "live_dorsal",
+    "caption": null,
+    "sort_order": 1,
+    "is_cover": true,
+    "photographer_profile_id": null,
+    "photographer_name": "哈姆",
+    "license": "all_rights_reserved",
+    "visibility": "public"
+  },
+  {
     "id": "SN-2026-00021",
     "public_id": "SN-2026-00021",
     "observation_id": null,

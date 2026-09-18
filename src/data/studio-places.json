@@ -124,5 +124,61 @@
     "elevation_m": null,
     "description": null,
     "merged_into_id": null
+  },
+  {
+    "id": "place-18",
+    "name": "广东",
+    "country": "中国",
+    "admin1": "广东",
+    "admin2": "",
+    "locality": "",
+    "site_name": "",
+    "latitude": null,
+    "longitude": null,
+    "elevation_m": null,
+    "description": null,
+    "merged_into_id": null
+  },
+  {
+    "id": "place-19",
+    "name": "广州",
+    "country": "中国",
+    "admin1": "广东",
+    "admin2": "广州",
+    "locality": "",
+    "site_name": "",
+    "latitude": null,
+    "longitude": null,
+    "elevation_m": null,
+    "description": null,
+    "merged_into_id": null
+  },
+  {
+    "id": "place-20",
+    "name": "安岳县",
+    "country": "中国",
+    "admin1": "四川省",
+    "admin2": "安岳县",
+    "locality": "",
+    "site_name": "",
+    "latitude": 30.000667,
+    "longitude": 104.997925,
+    "elevation_m": null,
+    "description": null,
+    "merged_into_id": null
+  },
+  {
+    "id": "place-21",
+    "name": "番禺区",
+    "country": "中国",
+    "admin1": "广东省",
+    "admin2": "",
+    "locality": "番禺区",
+    "site_name": "",
+    "latitude": 23.055683,
+    "longitude": 113.386477,
+    "elevation_m": null,
+    "description": null,
+    "merged_into_id": null
   }
 ]
