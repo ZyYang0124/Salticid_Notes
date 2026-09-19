@@ -995,24 +995,48 @@ const OBS_EDITOR_JS = `
       if (inflight > 0) setStatus('上传中 ' + batch.done + '/' + batch.total + '…');
     });
   }
-  // EXIF 建议与上传并行，不阻塞（§14：不静默覆盖，只给「使用 / 忽略」建议条）
-  function runExifSuggest(first) {
-    var fd0 = new FormData();
-    fd0.append('photo', first);
-    window.__sfnFetch('/studio/api/exif-preview', { method: 'POST', body: fd0 }, 30000)
-      .then(function (r) { return r.ok ? r.json() : {}; })
-      .then(function (xj) {
-        var x = xj.results && xj.results[0];
-        if (!x) return;
-        var bar = $('#exif-suggest');
-        if (!bar) return;
-        var chips = [];
-        var dateEl = document.querySelector('[data-field="observed_at"]');
-        if (x.date) chips.push({ key: 'date', text: '拍摄时间 ' + x.date, apply: function () { if (dateEl) { dateEl.value = x.date; scheduleSave(); } } });
-        if (x.gps) chips.push({ key: 'gps', text: '坐标 ' + x.gps.lat + ', ' + x.gps.lng, apply: function () { latEl.value = x.gps.lat; lngEl.value = x.gps.lng; scheduleSave(); matchAddress(x.gps.lat, x.gps.lng); } });
-        if (!chips.length) return;
+  // EXIF 批量读取（与上传并行）：全部照片并行解析 → 聚合建议 + 时间段提示（§14：不静默覆盖）
+  function runExifSuggest(files) {
+    var list = Array.prototype.slice.call(files || []);
+    if (!list.length) return;
+    var CONC = 4, next = 0;
+    var results = [];
+    function worker() {
+      if (next >= list.length) return Promise.resolve();
+      var f = list[next++];
+      var fd = new FormData();
+      fd.append('photo', f);
+      return window.__sfnFetch('/studio/api/exif-preview', { method: 'POST', body: fd }, 30000)
+        .then(function (r) { return r.ok ? r.json() : {}; })
+        .then(function (xj) { var x = xj.results && xj.results[0]; if (x) results.push(x); })
+        .catch(function () {})
+        .then(worker);
+    }
+    var ws = [];
+    for (var w = 0; w < Math.min(CONC, list.length); w++) ws.push(worker());
+    Promise.all(ws).then(function () {
+      if (!results.length) return;
+      var bar = $('#exif-suggest');
+      var dateEl = document.querySelector('[data-field="observed_at"]');
+      // 聚合：最早拍摄时间 + 首个坐标 + 相机
+      var chips = [];
+      var withTime = results.filter(function (x) { return x.datetime || x.date; });
+      if (withTime.length) {
+        withTime.sort(function (a, b) { return String(a.datetime || a.date).localeCompare(String(b.datetime || b.date)); });
+        var earliest = withTime[0];
+        var d = String(earliest.date || (earliest.datetime || '').slice(0, 10));
+        if (d) chips.push({ text: '拍摄时间 ' + d + (withTime.length > 1 ? '（本批最早，共 ' + withTime.length + ' 张有时间）' : ''), apply: function () { if (dateEl) { dateEl.value = d; scheduleSave(); } } });
+      }
+      var withGps = results.filter(function (x) { return x.gps; });
+      if (withGps.length) {
+        var g0 = withGps[0].gps;
+        chips.push({ text: '坐标 ' + g0.lat + ', ' + g0.lng + (withGps.length > 1 ? '（本批 ' + withGps.length + ' 张带坐标，以第一张为准）' : ''), apply: function () { latEl.value = g0.lat; lngEl.value = g0.lng; scheduleSave(); matchAddress(g0.lat, g0.lng); } });
+      }
+      var cam0 = null;
+      for (var i = 0; i < results.length; i++) if (results[i].camera) { cam0 = results[i].camera; break; }
+      if (bar && chips.length) {
         bar.hidden = false;
-        bar.innerHTML = '<span>从照片读取到：</span>' + chips.map(function (c, i) {
+        bar.innerHTML = '<span>从 ' + results.length + ' 张照片读取到：</span>' + chips.map(function (c, i) {
           return '<span>' + escHtml(c.text) + '</span><button type="button" class="use" data-i="' + i + '">使用</button>';
         }).join('') + '<button type="button" data-dismiss="1">忽略</button>';
         Array.prototype.slice.call(bar.querySelectorAll('button')).forEach(function (btn) {
@@ -1022,10 +1046,26 @@ const OBS_EDITOR_JS = `
             bar.hidden = true;
           });
         });
-        var cam = $('#exif-cam');
-        if (cam && x.camera) cam.textContent = '相机：' + x.camera;
-      })
-      .catch(function () {});
+      }
+      var cam = $('#exif-cam');
+      if (cam && cam0) cam.textContent = '相机：' + cam0;
+      // 时间段提示：拍摄时间间隔 > 2 小时视为另一段野外时间
+      var gbar = $('#exif-groups');
+      if (!gbar) return;
+      var times = withTime.map(function (x) { return x.datetime || (x.date + 'T00:00:00'); }).sort();
+      var clusters = 1;
+      for (var k = 1; k < times.length; k++) {
+        var a = new Date(times[k - 1]).getTime(), b2 = new Date(times[k]).getTime();
+        if (!Number.isNaN(a) && !Number.isNaN(b2) && b2 - a > 2 * 3600 * 1000) clusters++;
+      }
+      if (clusters > 1) {
+        var fmt = function (t) { var d2 = new Date(t); return isNaN(d2) ? '' : (d2.getMonth() + 1) + '月' + d2.getDate() + '日 ' + String(d2.getHours()).padStart(2, '0') + ':' + String(d2.getMinutes()).padStart(2, '0'); };
+        gbar.hidden = false;
+        gbar.textContent = '这批照片跨 ' + clusters + ' 个时间段（' + fmt(times[0]) + ' 至 ' + fmt(times[times.length - 1]) + '），可能是多次相遇。可先记为一条；整批整理请用工作台的「批量导入」。';
+      } else {
+        gbar.hidden = true;
+      }
+    });
   }
   function handleFiles(fileList) {
     var all = Array.prototype.slice.call(fileList || []);
@@ -1051,7 +1091,7 @@ const OBS_EDITOR_JS = `
       rerenderGrid();
       updateRail();
       batch.total += queue.length;
-      runExifSuggest(files[0]);
+      runExifSuggest(files);
       var next = 0;
       function worker() {
         if (next >= queue.length) return Promise.resolve();
@@ -1634,3 +1674,319 @@ export const PROFILE_SCRIPT = UPLOAD_LIB + `
 export const LOGIN_SCRIPT = LOGIN_JS;
 export const OBS_EDITOR_SCRIPT = UPLOAD_LIB + OBS_EDITOR_JS;
 export const NOTE_EDITOR_SCRIPT = UPLOAD_LIB + NOTE_EDITOR_JS;
+
+// ==================== 批量导入（iNat 式：整批照片按拍摄时间分组 → 一组一条草稿） ====================
+const IMPORT_JS = `
+(function () {
+  function $(s) { return document.querySelector(s); }
+  function escHtml(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+  function readJson(r) { return r.text().then(function (t) { try { return JSON.parse(t); } catch (e) { return { ok: false, error: '服务异常' }; } }); }
+  function pad(n) { return String(n).padStart(2, '0'); }
+
+  var drop = $('#imp-drop'), filesIn = $('#imp-files'), dirIn = $('#imp-dir');
+  var grid = $('#imp-grid'), toolbar = $('#imp-toolbar'), countEl = $('#imp-count'), statusEl = $('#imp-status');
+  var thrSel = $('#imp-thr'), createBtn = $('#imp-create'), doneEl = $('#imp-done');
+  var MAX = 500;
+  var items = [], groups = [], working = false;
+
+  function status(m) { if (statusEl) statusEl.textContent = m || ''; }
+
+  // ---- 输入：拖拽 / 点击 / 文件夹 / 粘贴 ----
+  drop.addEventListener('click', function () { filesIn.click(); });
+  filesIn.addEventListener('change', function () { addFiles(filesIn.files); filesIn.value = ''; });
+  dirIn.addEventListener('change', function () { addFiles(dirIn.files); dirIn.value = ''; });
+  drop.addEventListener('dragover', function (e) { e.preventDefault(); drop.classList.add('over'); });
+  drop.addEventListener('dragleave', function () { drop.classList.remove('over'); });
+  drop.addEventListener('drop', function (e) { e.preventDefault(); drop.classList.remove('over'); addFiles(e.dataTransfer.files); });
+  document.addEventListener('paste', function (e) {
+    var fs = e.clipboardData && e.clipboardData.files;
+    if (!fs || !fs.length) return;
+    var imgs = Array.prototype.slice.call(fs).filter(function (f) { return /^image\\//.test(f.type); });
+    if (imgs.length) { e.preventDefault(); addFiles(imgs); }
+  });
+  $('#imp-reset').addEventListener('click', function () {
+    if (working) return;
+    items.forEach(function (i) { URL.revokeObjectURL(i.url); });
+    items = []; groups = [];
+    doneEl.innerHTML = '';
+    render();
+  });
+  thrSel.addEventListener('change', function () { if (!working) regroup(); });
+
+  function addFiles(list) {
+    if (working) return;
+    var all = Array.prototype.slice.call(list || []);
+    var files = all.filter(function (f) { return /^image\\/(jpeg|png)$/.test(f.type); });
+    if (!files.length) { status('所选文件都不是 JPG / PNG'); return; }
+    var over = items.length + files.length - MAX;
+    if (over > 0) { files = files.slice(0, files.length - over); status('已达 ' + MAX + ' 张上限，多出的 ' + over + ' 张未加入'); }
+    if (!files.length) return;
+    status('正在本机读取拍摄时间与坐标…（照片不在此步上传）');
+    var CONC = 6, next = 0;
+    function worker() {
+      if (next >= files.length) return Promise.resolve();
+      var f = files[next++];
+      return exifOf(f).then(function (x) {
+        items.push({
+          file: f, name: f.name,
+          time: x.time ? new Date(x.time) : (f.lastModified ? new Date(f.lastModified) : null),
+          gps: x.gps || null,
+          url: URL.createObjectURL(f),
+          pid: null,
+        });
+      }).then(worker);
+    }
+    var ws = [];
+    for (var i = 0; i < Math.min(CONC, files.length); i++) ws.push(worker());
+    Promise.all(ws).then(function () { regroup(); });
+  }
+
+  // ---- 客户端最小 EXIF（JPEG APP1/TIFF）：拍摄时间 + GPS；PNG/无 EXIF 回退文件时间 ----
+  function exifOf(file) {
+    return new Promise(function (res) {
+      var empty = { time: null, gps: null };
+      if (!/^image\\/jpeg$/.test(file.type) || !file.arrayBuffer) { res(empty); return; }
+      file.arrayBuffer().then(function (buf) {
+        try {
+          var b = new Uint8Array(buf);
+          if (b.length < 4 || b[0] !== 0xff || b[1] !== 0xd8) { res(empty); return; }
+          var off = 2;
+          while (off + 4 < b.length) {
+            if (b[off] !== 0xff) { off += 1; continue; }
+            var marker = b[off + 1];
+            if (marker === 0xda) break;
+            var len = (b[off + 2] << 8) | b[off + 3];
+            if (len < 2) break;
+            if (marker === 0xe1 && b[off + 4] === 0x45 && b[off + 5] === 0x78 && b[off + 6] === 0x69 && b[off + 7] === 0x66) {
+              parseTiff(b.subarray(off + 10, off + 2 + len), empty);
+              break;
+            }
+            off += 2 + len;
+          }
+          res(empty);
+        } catch (e) { res(empty); }
+      }).catch(function () { res(empty); });
+    });
+  }
+  function parseTiff(t, out) {
+    var le = t[0] === 0x49 && t[1] === 0x49;
+    function u16(o) { return le ? t[o] | (t[o + 1] << 8) : (t[o] << 8) | t[o + 1]; }
+    function u32(o) { return le ? (t[o] | (t[o + 1] << 8) | (t[o + 2] << 16) | (t[o + 3] << 24)) >>> 0 : ((t[o] << 24) | (t[o + 1] << 16) | (t[o + 2] << 8) | t[o + 3]) >>> 0; }
+    function ifd(o) {
+      var n = u16(o), map = {};
+      for (var i = 0; i < n; i++) { var e = o + 2 + i * 12; map[u16(e)] = e; }
+      return map;
+    }
+    function val(e) {
+      var sizes = { 1: 1, 2: 1, 3: 2, 4: 4, 5: 8, 7: 1, 9: 4, 10: 8 };
+      var n = u32(e + 4), total = (sizes[u16(e + 2)] || 1) * n;
+      return { n: n, o: total <= 4 ? e + 8 : u32(e + 8) };
+    }
+    function ascii(e) {
+      var v = val(e), s = '';
+      for (var i = 0; i < v.n - 1; i++) s += String.fromCharCode(t[v.o + i]);
+      return s;
+    }
+    var ifd0 = ifd(8);
+    var exPtr = ifd0[0x8769];
+    if (exPtr) {
+      var ex = ifd(u32(exPtr + 8));
+      var dt = ex[0x9003] || ex[0x9004];
+      if (dt) {
+        var raw = ascii(dt); // YYYY:MM:DD HH:MM:SS
+        var m = raw.match(/^(\\d{4}):(\\d{2}):(\\d{2}) (\\d{2}):(\\d{2})(?::(\\d{2}))?$/);
+        if (m) out.time = m[1] + '-' + m[2] + '-' + m[3] + 'T' + m[4] + ':' + m[5] + ':' + (m[6] || '00');
+      }
+    }
+    if (!out.time && ifd0[0x0132]) {
+      var raw2 = ascii(ifd0[0x0132]);
+      var m2 = raw2.match(/^(\\d{4}):(\\d{2}):(\\d{2})/);
+      if (m2) out.time = m2[1] + '-' + m2[2] + '-' + m2[3] + 'T00:00:00';
+    }
+    var gpsPtr = ifd0[0x8825];
+    if (gpsPtr) {
+      var g = ifd(u32(gpsPtr + 8));
+      function rat3(e) {
+        var v = val(e), r = [];
+        for (var i = 0; i < 3; i++) {
+          var num = u32(v.o + i * 8), den = u32(v.o + i * 8 + 4);
+          r.push(den ? num / den : 0);
+        }
+        return r;
+      }
+      if (g[2] && g[4] && g[1] && g[3]) {
+        var la = rat3(g[2]), ln = rat3(g[4]);
+        var lat = la[0] + la[1] / 60 + la[2] / 3600;
+        var lng = ln[0] + ln[1] / 60 + ln[2] / 3600;
+        if (String.fromCharCode(t[val(g[1]).o]) === 'S') lat = -lat;
+        if (String.fromCharCode(t[val(g[3]).o]) === 'W') lng = -lng;
+        out.gps = { lat: Math.round(lat * 1e6) / 1e6, lng: Math.round(lng * 1e6) / 1e6 };
+      }
+    }
+  }
+
+  // ---- 分组：按时间排序，间隔超过阈值即新组 ----
+  function regroup() {
+    var thr = parseFloat(thrSel.value) * 3600 * 1000;
+    var sorted = items.slice().sort(function (a, b) {
+      var ta = a.time ? a.time.getTime() : Infinity;
+      var tb = b.time ? b.time.getTime() : Infinity;
+      return ta - tb;
+    });
+    groups = [];
+    sorted.forEach(function (it) {
+      var last = groups[groups.length - 1];
+      var lt = last ? last.items[last.items.length - 1].time : null;
+      if (!last || (it.time && lt && it.time.getTime() - lt.getTime() > thr)) {
+        groups.push({ items: [it], date: '', lat: '', lng: '', pid: null, state: '', error: '' });
+      } else {
+        last.items.push(it);
+      }
+    });
+    groups.forEach(function (g) {
+      var times = g.items.filter(function (i) { return i.time; }).map(function (i) { return i.time; });
+      if (times.length) {
+        times.sort(function (a, b) { return a - b; });
+        g.date = times[0].toISOString().slice(0, 10);
+        g.timeMin = times[0];
+        g.timeMax = times[times.length - 1];
+      }
+      for (var i = 0; i < g.items.length; i++) {
+        if (g.items[i].gps) { g.lat = g.items[i].gps.lat; g.lng = g.items[i].gps.lng; break; }
+      }
+    });
+    render();
+  }
+
+  function render() {
+    toolbar.hidden = items.length === 0;
+    countEl.textContent = items.length ? '共 ' + items.length + ' 张 · 分为 ' + groups.length + ' 组' : '';
+    createBtn.textContent = groups.length ? '创建 ' + groups.length + ' 条草稿并上传' : '创建草稿';
+    createBtn.disabled = working || !groups.length;
+    grid.innerHTML = groups.map(cardHtml).join('');
+    Array.prototype.slice.call(grid.querySelectorAll('.imp-card')).forEach(function (card) {
+      var gi = +card.getAttribute('data-g');
+      var g = groups[gi];
+      Array.prototype.slice.call(card.querySelectorAll('[data-f]')).forEach(function (inp) {
+        inp.addEventListener('change', function () { g[inp.getAttribute('data-f')] = inp.value.trim(); });
+      });
+    });
+  }
+  function fmtT(d) { return d ? (d.getMonth() + 1) + '月' + d.getDate() + '日 ' + pad(d.getHours()) + ':' + pad(d.getMinutes()) : '无时间信息'; }
+  function cardHtml(g, gi) {
+    var span = g.timeMin ? fmtT(g.timeMin) + (g.timeMax && g.timeMax !== g.timeMin ? ' – ' + fmtT(g.timeMax) : '') : '无时间信息（按文件时间归组）';
+    var thumbs = g.items.slice(0, 8).map(function (i) { return '<img src="' + i.url + '" alt="" />'; }).join('');
+    if (g.items.length > 8) thumbs += '<span class="hint">+' + (g.items.length - 8) + '</span>';
+    var state = '';
+    if (g.pid && g.state === 'ok') state = '<div class="imp-state ok">✓ 草稿已建：<a href="/studio/observations/' + g.pid + '/edit" target="_blank">' + g.pid + '</a>（' + (g.uploaded || 0) + '/' + g.items.length + ' 张）</div>';
+    else if (g.state === 'working') state = '<div class="imp-state">创建中…' + (g.progress || '') + '</div>';
+    else if (g.state === 'error') state = '<div class="imp-state err">' + escHtml(g.error || '创建失败') + ' · 排查后可整批重试</div>';
+    return '<div class="imp-card" data-g="' + gi + '">' +
+      '<img class="imp-cover" src="' + g.items[0].url + '" alt="" />' +
+      '<div class="imp-meta">' +
+        '<b>第 ' + (gi + 1) + ' 组 · ' + g.items.length + ' 张</b>' +
+        '<span class="hint">' + span + '</span>' +
+        '<label>日期 <input type="date" data-f="date" value="' + g.date + '" /></label>' +
+        '<label>纬度 <input type="number" step="0.00001" data-f="lat" value="' + g.lat + '" placeholder="选填" /> 经度 <input type="number" step="0.00001" data-f="lng" value="' + g.lng + '" placeholder="选填" /></label>' +
+        '<div class="imp-thumbs">' + thumbs + '</div>' +
+        state +
+      '</div></div>';
+  }
+  function renderCardState(gi) {
+    var card = grid.querySelector('.imp-card[data-g="' + gi + '"]');
+    if (!card) return;
+    var g = groups[gi];
+    var tmp = document.createElement('div');
+    tmp.innerHTML = cardHtml(g, gi);
+    var fresh = tmp.querySelector('.imp-meta');
+    var old = card.querySelector('.imp-meta');
+    if (fresh && old) card.replaceChild(fresh, old);
+  }
+
+  // ---- 批量创建：逐组 建稿 → 补字段 → 传照片（组内 3 并发） → 按文件顺序固定排序 ----
+  createBtn.addEventListener('click', function () {
+    if (working || !groups.length) return;
+    working = true;
+    createBtn.disabled = true;
+    var seq = Promise.resolve();
+    groups.forEach(function (g, gi) {
+      seq = seq.then(function () {
+        g.state = 'working'; g.error = '';
+        renderCardState(gi);
+        return createGroup(g, gi).then(function () {
+          g.state = 'ok';
+          renderCardState(gi);
+        }).catch(function (e) {
+          g.state = 'error'; g.error = (e && e.message) || '创建失败';
+          renderCardState(gi);
+        });
+      });
+    });
+    seq.then(function () {
+      working = false;
+      render();
+      var ok = groups.filter(function (g) { return g.pid; });
+      doneEl.innerHTML = ok.length
+        ? '<p>完成：成功创建 ' + ok.length + ' 条草稿' + (ok.length < groups.length ? '，' + (groups.length - ok.length) + ' 组失败（卡片上有原因，处理后可重试）' : '') + '。逐条补充鉴定与生境后即可发布：</p><p>' +
+          ok.map(function (g) { return '<a href="/studio/observations/' + g.pid + '/edit" target="_blank">' + g.pid + '</a>'; }).join(' · ') + '</p>'
+        : '';
+      status('');
+    });
+  });
+  function createGroup(g, gi) {
+    var pids = [];
+    return fetch('/studio/api/observations', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({}) })
+      .then(readJson)
+      .then(function (j) {
+        // 创建接口成功返回 {public_id, edit_url}，无 ok 字段
+        if (!j.public_id) throw new Error(j.error || '创建失败');
+        g.pid = j.public_id;
+        var patch = {};
+        if (g.date) patch.observed_at = g.date;
+        if (g.lat !== '' && g.lat != null && g.lng !== '' && g.lng != null) { patch.latitude = g.lat; patch.longitude = g.lng; }
+        return fetch('/studio/api/observations/' + g.pid, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(patch) });
+      })
+      .then(function (r) { if (!r.ok) throw new Error('字段保存失败（' + r.status + '）'); })
+      .then(function () {
+        var next = 0, its = g.items, num = gi + 1;
+        function worker() {
+          if (next >= its.length) return Promise.resolve();
+          var it = its[next++];
+          return window.__sfnPrepareUpload(it.file).then(function (prepared) {
+            var fd = new FormData();
+            window.__sfnAppendUpload(fd, prepared);
+            return window.__sfnUpload('/studio/observations/' + g.pid + '/photos', fd, null, 300000).then(function (r) {
+              if (r.status === 401) throw new Error('登录已过期，请刷新页面重新登录');
+              if (!r.ok || !r.json || !r.json.ok) throw new Error((r.json && r.json.error) || '照片上传失败');
+              var pid2 = (r.json.added || [])[0];
+              if (pid2) { it.pid = pid2; pids.push(pid2); }
+              g.uploaded = pids.length;
+              g.progress = '已上传 ' + pids.length + '/' + its.length;
+              status('第 ' + num + ' 组：已上传 ' + pids.length + '/' + its.length + ' 张');
+              if (g.state === 'working') renderCardState(gi);
+            });
+          }).then(worker);
+        }
+        var ws = [];
+        for (var w = 0; w < Math.min(3, its.length); w++) ws.push(worker());
+        return Promise.all(ws);
+      })
+      .then(function () {
+        var order = g.items.map(function (i) { return i.pid; }).filter(Boolean);
+        if (!order.length) return null;
+        return fetch('/studio/api/observations/' + g.pid + '/photos/order', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ order: order }),
+        }).then(function (r) { if (!r.ok) throw new Error('排序保存失败'); });
+      });
+  }
+
+  // 离开保护
+  window.addEventListener('beforeunload', function (e) {
+    if (working) { e.preventDefault(); e.returnValue = ''; }
+  });
+  window.__impAddFiles = addFiles; // e2e：合成 DragEvent 会丢失 lastModified，测试直通 addFiles
+})();
+`;
+
+export const IMPORT_SCRIPT = UPLOAD_LIB + IMPORT_JS;
+

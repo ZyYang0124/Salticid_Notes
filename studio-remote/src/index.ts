@@ -27,9 +27,9 @@ import { renderArticle } from './article';
 import { buildResolvers } from './embeds';
 import { buildExportZip } from './export';
 import { syncToGitHub } from './github';
-import { esc, loginPage, mediaPage, noteEditorHtml, obsEditorHtml, page, STYLES, homePage, draftsPage, dataPage, relTime, taxaManagePage, type FeedItem } from './pages';
+import { esc, loginPage, mediaPage, noteEditorHtml, obsEditorHtml, page, STYLES, homePage, draftsPage, dataPage, relTime, taxaManagePage, importPage, type FeedItem } from './pages';
 import { invitePage } from './invites';
-import { OBS_EDITOR_SCRIPT, NOTE_EDITOR_SCRIPT, LOGIN_SCRIPT, PROFILE_SCRIPT } from './editorjs';
+import { OBS_EDITOR_SCRIPT, NOTE_EDITOR_SCRIPT, LOGIN_SCRIPT, PROFILE_SCRIPT, IMPORT_SCRIPT } from './editorjs';
 import { allTaxonOptions, createWorkingTaxon, findTaxonOptionBySlug, mergeWorkingTaxon, renameWorkingTaxon } from './taxa';
 import { suggestGenera, suggestSpecies, validateFormalName } from './wsc';
 
@@ -42,7 +42,7 @@ async function auth(c: any): Promise<StudioUser | null> {
 // 受保护路径的认证中间件：未登录 → 302 登录页（中间件返回 Response 可短路）
 const PUBLIC_PATHS = new Set(['/studio/login']);
 function isPublicPath(path: string): boolean {
-  return PUBLIC_PATHS.has(path) || path.startsWith('/studio/login/') || path.startsWith('/studio.css') || path.startsWith('/studio-editor.js') || path.startsWith('/studio-note-editor.js');
+  return PUBLIC_PATHS.has(path) || path.startsWith('/studio/login/') || path.startsWith('/studio.css') || path.startsWith('/studio-editor.js') || path.startsWith('/studio-note-editor.js') || path.startsWith('/studio-import.js');
 }
 function deny(c: any): Response {
   // JSON API 返回 401，页面路径 302 到登录页
@@ -95,6 +95,7 @@ app.get('/', (c) => c.redirect('/studio'));
 app.get('/studio.css', (c) => c.body(STYLES, 200, { 'Content-Type': 'text/css; charset=utf-8' }));
 app.get('/studio-editor.js', (c) => c.body(OBS_EDITOR_SCRIPT, 200, { 'Content-Type': 'text/javascript; charset=utf-8' }));
 app.get('/studio-note-editor.js', (c) => c.body(NOTE_EDITOR_SCRIPT, 200, { 'Content-Type': 'text/javascript; charset=utf-8' }));
+app.get('/studio-import.js', (c) => c.body(IMPORT_SCRIPT, 200, { 'Content-Type': 'text/javascript; charset=utf-8' }));
 app.get('/studio-login.js', (c) => c.body(LOGIN_SCRIPT, 200, { 'Content-Type': 'text/javascript; charset=utf-8' }));
 
 // ---------- R2 派生图（Studio 内部展示用；公开站仍由构建管线产出自己的派生图） ----------
@@ -1152,7 +1153,7 @@ app.post('/studio/api/exif-preview', async (c) => {
   const file = fd.get('photo');
   if (!(file instanceof File)) return c.json({ error: 'no photo' }, 400);
   const s = await parseExif(await file.arrayBuffer());
-  return c.json({ results: [{ filename: file.name, date: s.date ?? null, gps: s.gps ?? null, camera: s.camera ?? null }] });
+  return c.json({ results: [{ filename: file.name, date: s.date ?? null, datetime: s.datetime ?? null, gps: s.gps ?? null, camera: s.camera ?? null }] });
 });
 
 // ---------- 札记 ----------
@@ -1278,6 +1279,12 @@ app.get('/studio/observations/:public_id/edit', async (c) => {
 });
 
 // ---------- 札记编辑器页面 ----------
+
+// 批量导入：整批照片按拍摄时间分组，一组一条观察草稿
+app.get('/studio/import', async (c) => {
+  const u = user(c);
+  return c.html(importPage(u));
+});
 
 app.get('/studio/notes/new', async (c) => {
   const u = user(c);

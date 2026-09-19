@@ -4,6 +4,8 @@ import exifReader from 'exif-reader';
 
 export interface ExifSuggestion {
   date?: string;
+  /** 完整拍摄时间（ISO），供批量分组按时间聚类 */
+  datetime?: string;
   gps?: { lat: number; lng: number };
   /** 相机（Make + Model），仅用于编辑器展示 */
   camera?: string;
@@ -42,7 +44,10 @@ export async function parseExif(buffer: ArrayBuffer): Promise<ExifSuggestion> {
         const dateVal = parsed?.Photo?.DateTimeOriginal ?? parsed?.Image?.DateTime;
         if (dateVal) {
           const d = new Date(dateVal);
-          if (!Number.isNaN(d.getTime())) out.date = d.toISOString().slice(0, 10);
+          if (!Number.isNaN(d.getTime())) {
+            out.date = d.toISOString().slice(0, 10);
+            out.datetime = d.toISOString();
+          }
         }
         const camera = [parsed?.Image?.Make, parsed?.Image?.Model].filter(Boolean).join(' ').trim();
         if (camera) out.camera = camera;

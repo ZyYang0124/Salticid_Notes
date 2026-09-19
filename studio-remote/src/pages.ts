@@ -432,6 +432,37 @@ details.more .grid { display:grid; grid-template-columns:1fr 1fr 1fr; gap:0 22px
   border:1px solid var(--line); background:#fff; color:var(--ink);
 }
 .exif-suggest button.use { border-color:var(--terra); color:var(--terra); }
+.exif-groups {
+  display:block; font-size:12.5px; color:#8a5a22; background:#f7ecdd;
+  border:1px solid #ecd9bd; border-radius:8px; padding:8px 12px; margin:10px 0 0;
+}
+
+/* ---------- 批量导入 ---------- */
+.imp-drop {
+  border:2px dashed var(--line); border-radius:14px; padding:36px 20px; text-align:center;
+  cursor:pointer; color:var(--muted); background:#fff; margin:14px 0;
+}
+.imp-drop:hover, .imp-drop.over { border-color:var(--terra); color:var(--ink); }
+.imp-drop .plus { font-size:30px; color:var(--faint); display:block; line-height:1; margin-bottom:6px; }
+.imp-toolbar { display:flex; align-items:center; gap:14px; margin:14px 0 18px; flex-wrap:wrap; }
+.imp-toolbar .spacer { flex:1; }
+.imp-toolbar select { font:inherit; font-size:13.5px; border:1px solid var(--line); border-radius:8px; padding:4px 8px; background:#fff; }
+.imp-toolbar .primary { font:inherit; font-size:14px; background:var(--ink); color:var(--paper); border:none; border-radius:99px; padding:9px 20px; cursor:pointer; }
+.imp-toolbar .primary[disabled] { opacity:.5; cursor:default; }
+.imp-grid { display:flex; flex-direction:column; gap:14px; }
+.imp-card { display:flex; gap:14px; background:#fff; border:1px solid var(--line-soft); border-radius:12px; padding:14px; }
+.imp-card img.imp-cover { width:150px; height:150px; object-fit:cover; border-radius:8px; background:var(--paper-deep); }
+.imp-meta { flex:1; min-width:0; display:flex; flex-direction:column; gap:6px; }
+.imp-meta b { font-size:15px; }
+.imp-meta label { display:flex; align-items:center; gap:8px; font-size:13px; color:var(--muted); flex-wrap:wrap; }
+.imp-meta input { border:1px solid var(--line); border-radius:8px; padding:4px 8px; font:inherit; font-size:13.5px; width:130px; }
+.imp-meta input[type="number"] { width:110px; }
+.imp-thumbs { display:flex; gap:6px; flex-wrap:wrap; margin-top:4px; }
+.imp-thumbs img { width:44px; height:44px; object-fit:cover; border-radius:6px; background:var(--paper-deep); }
+.imp-state { font-size:13px; color:var(--muted); }
+.imp-state.ok { color:#4c6b3c; }
+.imp-state.err { color:var(--terra); }
+.imp-done a { color:var(--ink); text-underline-offset:3px; }
 /* ---- 桌面右栏（§8） ---- */
 @media (min-width:1100px) {
   .ed-wrap { display:grid; grid-template-columns:minmax(0,1fr) 230px; gap:40px; max-width:calc(var(--w-note) + 270px); margin:0 auto; padding:44px 24px 160px; }
@@ -628,6 +659,7 @@ export function page(
     : `<a class="brand" href="/studio">Studio<small>红栏杆跳蛛观察志</small></a>
   <nav>
     <a href="/studio/drafts">观察</a>
+    <a href="/studio/import">批量导入</a>
     ${user?.role === 'owner' ? '<a href="/studio/places-manage">地点</a><a href="/studio/data">数据</a>' : ''}
   </nav>
   <div class="right">
@@ -715,6 +747,7 @@ export function homePage(user: StudioUser, recent: FeedItem[]): string {
     </div>
     <a class="new-obs" href="/studio/observations/new"><span class="plus">＋</span> 新建观察</a>
     <a class="alt-link" href="/studio/notes/new">或写一篇札记 →</a>
+    <a class="alt-link" href="/studio/import">或批量导入一整个野外批次 →</a>
     <h2 class="kicker">最近编辑</h2>
     ${feedHtml(recent.slice(0, 6), '还没有记录。从上面的「新建观察」开始。', user.role === 'owner')}
     <a class="all-link" href="/studio/drafts">查看全部观察 →</a>
@@ -944,6 +977,7 @@ export function obsEditorHtml(
     <section class="field ed-sec" id="sec-time">
       <h2 class="ed-sec-title">时间与地点</h2>
       <div class="exif-suggest" id="exif-suggest" hidden></div>
+      <div class="exif-groups" id="exif-groups" hidden></div>
       <label>观察日期</label>
       <input type="date" data-field="observed_at" />
       <span class="hint" id="exif-hint">上传照片后可从 EXIF 读取拍摄时间与坐标</span>
@@ -1080,6 +1114,41 @@ export function obsEditorHtml(
 }
 
 /** 类群管理（§21-§24 分类学变动流）：工作编号改名（slug 不变）与合并到正式类群/另一编号 */
+export function importPage(user: StudioUser): string {
+  const initial = user.display_name.slice(0, 1);
+  return page('批量导入', `
+  <div class="wrap wide">
+    <div class="hello-wrap"><h1>批量导入</h1><p>把一整个野外批次拖进来：按拍摄时间自动分组，一组一条观察草稿。EXIF 时间与坐标在本机读取，照片只随草稿上传。</p></div>
+    <div id="imp-drop" class="imp-drop">
+      <span class="plus">＋</span>
+      <b>拖入照片 / 文件夹，或点击选择</b><br/>
+      <span class="hint">JPG / PNG · 支持 Ctrl+V 粘贴 · 最多 500 张</span>
+    </div>
+    <input type="file" id="imp-files" accept="image/jpeg,image/png" multiple hidden />
+    <input type="file" id="imp-dir" webkitdirectory hidden />
+    <div class="imp-toolbar" id="imp-toolbar" hidden>
+      <span id="imp-count"></span>
+      <label>分组间隔
+        <select id="imp-thr">
+          <option value="0.5">30 分钟</option>
+          <option value="1">1 小时</option>
+          <option value="2" selected>2 小时</option>
+          <option value="6">6 小时</option>
+          <option value="12">12 小时</option>
+          <option value="24">24 小时</option>
+        </select>
+      </label>
+      <button type="button" class="ghost" id="imp-reset" style="font:inherit;font-size:13px;background:none;border:none;color:var(--faint);cursor:pointer;text-decoration:underline;">清空重来</button>
+      <span class="spacer"></span>
+      <button type="button" class="primary" id="imp-create" disabled>创建草稿</button>
+    </div>
+    <div id="imp-status" class="hint" style="min-height:20px;"></div>
+    <div class="imp-grid" id="imp-grid"></div>
+    <div id="imp-done" class="imp-done"></div>
+  </div>
+  <script src="/studio-import.js"></script>`, user);
+}
+
 export function taxaManagePage(
   rows: { slug: string; scientific_name: string; chinese_name: string | null; status: string; usage: number }[],
   user: StudioUser,
