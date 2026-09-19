@@ -65,6 +65,17 @@ app.use('/studio/*', async (c, next) => {
   return next();
 });
 
+// Studio 页面与脚本一律 no-cache：迭代部署后浏览器不得用启发式缓存拿旧 JS
+// （媒体派生图按 SN 编号内容定址、永不改变，不走此中间件）
+async function noCache(c: any, next: () => Promise<void>) {
+  await next();
+  // /studio 页面、/studio-*.js 与 /studio.css 都是 '/studio' 前缀的兄弟路径，用前缀判断统一覆盖
+  if (c.req.path.startsWith('/studio') && c.res && !c.res.headers.has('Cache-Control')) {
+    c.res.headers.set('Cache-Control', 'no-cache');
+  }
+}
+app.use('*', noCache);
+
 function user(c: any): StudioUser {
   return c.get('user') as StudioUser;
 }
