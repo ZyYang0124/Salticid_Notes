@@ -824,19 +824,25 @@ app.get('/studio/api/wsc/complete', async (c) => {
 // 「我的观察」JSON 列表（微信小程序 / 其它原生客户端复用同一会话与数据）
 app.get('/studio/api/observations', async (c) => {
   const u = user(c);
+  // scope=all（札记选择器用）：全站观察含他人记录；q：编号/学名/地点/笔记关键字
+  const scopeAll = c.req.query('scope') === 'all';
+  const q = (c.req.query('q') ?? '').trim();
   const rows = await all<any>(
     c.env.DB,
-    `SELECT o.public_id, o.observed_at, o.status, o.field_note,
+    `SELECT o.public_id, o.observed_at, o.status, o.field_note, o.observer_name,
             i.display_identification,
             p.name AS place_name, p.admin1, p.admin2, p.country AS country_name,
             (SELECT COUNT(*) FROM media m WHERE m.observation_id = o.id) AS photo_count
      FROM observations o
      LEFT JOIN identifications i ON i.observation_id = o.id AND i.is_current = 1
      LEFT JOIN places p ON p.id = o.place_id
-     WHERE o.created_by = ? AND o.status != 'archived'
+     WHERE o.status != 'archived'
+       ${scopeAll ? '' : 'AND o.created_by = ?'}
+       ${q ? 'AND (o.public_id LIKE ? OR i.display_identification LIKE ? OR p.name LIKE ? OR p.admin1 LIKE ? OR p.admin2 LIKE ? OR p.locality LIKE ? OR o.field_note LIKE ?)' : ''}
      ORDER BY o.observed_at DESC, o.id DESC
-     LIMIT 100`,
-    u.id,
+     LIMIT ${q ? 30 : 100}`,
+    ...(scopeAll ? [] : [u.id]),
+    ...(q ? Array(7).fill('%' + q + '%') : []),
   );
   return c.json({ ok: true, observations: rows });
 });

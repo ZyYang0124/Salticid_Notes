@@ -1386,6 +1386,16 @@ const NOTE_EDITOR_JS = `
   [title, sub, body].forEach(function (el) { el.addEventListener('input', schedule); });
   var relInput = $('#n-related');
   if (relInput) relInput.addEventListener('change', schedule);
+  var relBtn = $('#n-related-pick');
+  if (relBtn) relBtn.addEventListener('click', function () {
+    openObsPicker(relBtn, function (pid) {
+      var parts = (relInput.value || '').split(/[,，;；\\s]+/).filter(Boolean);
+      if (parts.indexOf(pid) === -1) parts.push(pid);
+      relInput.value = parts.join(', ');
+      schedule();
+      setStatus('已关联 ' + pid);
+    });
+  });
   setPubBtn();
 
   // ---- 块菜单（＋ / /） ----
@@ -1416,6 +1426,80 @@ const NOTE_EDITOR_JS = `
     if (text === '__OBS__') insertAsk('观察编号（如 SFN-2026-000001）', 'observation');
     if (text === '__TRIP__') insertAsk('调查 slug（见公开站 /trips/…）', 'trip');
   }
+  // ---- 观察选择器：搜索全站观察（编号/学名/地点/笔记），免记编号 ----
+  var obsPop = null, obsSearch = null, obsList = null, obsPick = null, obsTimer = null;
+  function openObsPicker(anchor, onPick) {
+    obsPick = onPick;
+    if (!obsPop) {
+      obsPop = document.createElement('div');
+      obsPop.className = 'obs-picker';
+      obsPop.innerHTML = '<input type="text" class="op-search" placeholder="搜编号 / 物种 / 地点 / 笔记…" />' +
+        '<div class="op-list"></div><div class="op-foot">↑↓ 选择 · Enter 确认 · Esc 关闭 · 支持直接输入编号</div>';
+      document.body.appendChild(obsPop);
+      obsSearch = obsPop.querySelector('.op-search');
+      obsList = obsPop.querySelector('.op-list');
+      obsSearch.addEventListener('input', function () {
+        clearTimeout(obsTimer);
+        obsTimer = setTimeout(function () { loadObs(obsSearch.value.trim()); }, 250);
+      });
+      obsSearch.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape') { closeObsPicker(); }
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          var first = obsList.querySelector('.op-item');
+          if (first) first.dispatchEvent(new MouseEvent('mousedown'));
+          else if (/^(SFN|CSFN)-\\d{4}-\\d{6}$/i.test(obsSearch.value.trim())) { pickObs(obsSearch.value.trim().toUpperCase()); }
+        }
+      });
+      document.addEventListener('mousedown', function (e) {
+        if (obsPop.classList.contains('open') && !obsPop.contains(e.target)) closeObsPicker();
+      });
+    }
+    var r = anchor ? anchor.getBoundingClientRect() : { left: 80, bottom: 160 };
+    obsPop.style.left = Math.max(12, Math.min(r.left, window.innerWidth - 392)) + 'px';
+    obsPop.style.top = Math.max(12, Math.min(r.bottom + 8, window.innerHeight - 330)) + 'px';
+    obsPop.classList.add('open');
+    obsSearch.value = '';
+    loadObs('');
+    setTimeout(function () { obsSearch.focus(); }, 30);
+  }
+  function closeObsPicker() { if (obsPop) obsPop.classList.remove('open'); }
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+  function loadObs(q) {
+    obsList.innerHTML = '<div class="op-none">搜索中…</div>';
+    var url = '/studio/api/observations?scope=all' + (q ? '&q=' + encodeURIComponent(q) : '');
+    window.__sfnFetch(url, {}, 15000).then(function (r) { return r.ok ? r.json() : null; }).then(function (j) {
+      if (!obsPop.classList.contains('open')) return;
+      var rows = (j && j.observations) || [];
+      if (!rows.length) { obsList.innerHTML = '<div class="op-none">没有匹配的观察</div>'; return; }
+      obsList.innerHTML = rows.map(function (o) {
+        var meta = [(o.display_identification || '未鉴定'), (o.observed_at || '').slice(0, 10),
+          [o.admin1, o.admin2 || o.place_name].filter(Boolean).join('·'), o.observer_name].filter(Boolean).join(' · ');
+        return '<div class="op-item" data-pid="' + esc(o.public_id) + '"><b>' + esc(o.public_id) + '</b>' +
+          (o.status === 'draft' ? '<i class="op-draft">草稿</i>' : '') + '<span>' + esc(meta) + '</span></div>';
+      }).join('') + (/^(SFN|CSFN)-\\d{4}-\\d{6}$/i.test(q) ? '<div class="op-item" data-pid="' + esc(q.toUpperCase()) + '"><b>' + esc(q.toUpperCase()) + '</b><span>使用该编号</span></div>' : '');
+      Array.prototype.slice.call(obsList.querySelectorAll('.op-item')).forEach(function (el) {
+        el.addEventListener('mousedown', function (e) {
+          e.preventDefault();
+          pickObs(el.getAttribute('data-pid'));
+        });
+      });
+    }).catch(function () { obsList.innerHTML = '<div class="op-none">加载失败，请重试</div>'; });
+  }
+  function pickObs(pid) {
+    closeObsPicker();
+    if (obsPick) obsPick(pid);
+  }
+  function insertObsTag(pid) {
+    var tag = '{{observation:' + pid + '}}\\n\\n';
+    var at = body.selectionStart;
+    body.value = body.value.slice(0, at) + tag + body.value.slice(at);
+    body.focus();
+    body.selectionStart = body.selectionEnd = at + tag.length;
+    schedule();
+    setStatus('已插入观察卡片 ' + pid);
+  }
+
   function insertAsk(promptText, kind) {
     var v = window.prompt(promptText, '');
     if (!v || !v.trim()) return;
@@ -1453,7 +1537,7 @@ const NOTE_EDITOR_JS = `
       var ins = btn.getAttribute('data-ins');
       // 哨兵项直接唤起对应流程，不把字面量插进正文
       if (ins === '__IMAGE__') { insertImage(); return; }
-      if (ins === '__OBS__') { insertAsk('观察编号（如 SFN-2026-000001）', 'observation'); return; }
+      if (ins === '__OBS__') { openObsPicker(btn, insertObsTag); return; }
       if (ins === '__TRIP__') { insertAsk('调查 slug（见公开站 /trips/…）', 'trip'); return; }
       insertBlock(ins.replace(/&gt;/g, '>'));
     });
@@ -1504,7 +1588,7 @@ const NOTE_EDITOR_JS = `
       else if (c === 'bold') surround('**', '**', '加粗文字');
       else if (c === 'hr') insertBlock('---');
       else if (c === 'image') insertBlock('__IMAGE__');
-      else if (c === 'obs') insertBlock('__OBS__');
+      else if (c === 'obs') openObsPicker(document.querySelector('#nb-toolbar [data-cmd="obs"]'), insertObsTag);
     });
   }
 
@@ -2020,4 +2104,7 @@ const IMPORT_JS = `
 `;
 
 export const IMPORT_SCRIPT = UPLOAD_LIB + IMPORT_JS;
+
+
+
 

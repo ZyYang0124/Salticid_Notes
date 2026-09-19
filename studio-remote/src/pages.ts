@@ -437,6 +437,23 @@ details.more .grid { display:grid; grid-template-columns:1fr 1fr 1fr; gap:0 22px
   border:1px solid #ecd9bd; border-radius:8px; padding:8px 12px; margin:10px 0 0;
 }
 
+/* 观察选择器 */
+.obs-picker {
+  position: fixed; z-index: 400; width: 380px; max-height: 320px;
+  background: #fff; border: 1px solid var(--line); border-radius: 12px;
+  box-shadow: 0 14px 40px rgba(38,34,28,.18); display: none; flex-direction: column; overflow: hidden;
+}
+.obs-picker.open { display: flex; }
+.obs-picker .op-search { border: none; border-bottom: 1px solid var(--line-soft); padding: 10px 14px; font: inherit; font-size: 14px; outline: none; background: none; }
+.obs-picker .op-list { overflow: auto; max-height: 230px; }
+.op-item { padding: 9px 14px; cursor: pointer; display: flex; flex-direction: column; gap: 1px; border-bottom: 1px solid var(--line-soft); }
+.op-item:hover { background: var(--paper-deep); }
+.op-item b { font-size: 13px; letter-spacing: .04em; }
+.op-item span { font-size: 12px; color: var(--muted); }
+.op-item .op-draft { font-style: normal; font-size: 10.5px; color: #8a5a22; background: #f7ecdd; border-radius: 99px; padding: 1px 8px; margin-left: 6px; }
+.op-none, .op-foot { padding: 8px 14px; font-size: 12px; color: var(--faint); }
+.op-foot { border-top: 1px solid var(--line-soft); }
+
 /* 札记版式选择器 */
 .tpl-picker { display:flex; gap:8px; overflow-x:auto; padding:6px 2px 12px; }
 .tpl-opt {
@@ -1315,7 +1332,7 @@ export function noteEditorHtml(slug: string | null, data: Record<string, any>): 
     <h3>文章设置</h3>
     <div class="ro"><b>链接</b><span>${slug ? esc(`/posts/${slug}/`) : '发布后生成'}</span></div>
     <div class="ro"><b>作者</b><span>${esc(data.author_name ?? '')}</span></div>
-    <div class="field"><label>关联观察（编号，逗号分隔）</label><input id="n-related" placeholder="SFN-2026-000001, …" value="${esc(data.related ?? '')}" /></div>
+    <div class="field"><label>关联观察</label><div style="display:flex;gap:8px;align-items:center;"><input id="n-related" placeholder="SFN-…（可手输，或点「选」搜索）" value="${esc(data.related ?? '')}" style="flex:1;min-width:0;" /><button type="button" class="ghost" id="n-related-pick" style="font:inherit;font-size:12.5px;white-space:nowrap;">选观察</button></div></div>
   </aside>
 
   <div class="bottombar">
@@ -1336,3 +1353,5 @@ export function noteEditorHtml(slug: string | null, data: Record<string, any>): 
   </script>
   <script src="/studio-note-editor.js"></script>`, null, { editor: true, actions });
 }
+
+
