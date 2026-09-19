@@ -922,7 +922,8 @@ export interface ObsPhoto {
 export interface ObsBootMeta {
   status: string;
   hasUnpublished: boolean;
-  photoMeta: { public_id: string; caption: string | null; photographer_name: string | null }[];
+  tiandituKey?: string;
+  photoMeta: { public_id: string; caption: string | null; photographer_name: string | null; view_type: string }[];
 }
 
 /** 物种选择器选项：正式类群 + 工作编号（§21-§24） */
@@ -1085,6 +1086,7 @@ export function obsEditorHtml(
       status: ${jsonForScript(meta.status)},
       hasUnpublished: ${jsonForScript(meta.hasUnpublished)},
       photoMeta: ${jsonForScript(meta.photoMeta)},
+      tiandituKey: ${jsonForScript(meta.tiandituKey ?? '')},
       taxa: ${jsonForScript(taxaOptions)},
       data: ${jsonForScript({
         observed_at: data.observed_at ?? '',

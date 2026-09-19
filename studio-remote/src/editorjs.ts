@@ -745,31 +745,33 @@ const OBS_EDITOR_JS = `
     geoTimer = setTimeout(function () {
       var hint = document.querySelector('#map-box .map-hint');
       if (hint) hint.textContent = '正在识别地址…';
-      var url = 'https://nominatim.openstreetmap.org/reverse?format=jsonv2&zoom=10&addressdetails=1&accept-language=zh-CN&lat=' + lat + '&lon=' + lng;
-      window.__sfnFetch(url, {}, 15000).then(function (r) { return r.ok ? r.json() : null; }).then(function (j) {
-        var a = j && j.address;
-        if (!a) { if (hint) hint.textContent = '未能识别地址——可手动填写'; return; }
-        // 只填空字段：手工填过的内容绝不覆盖（与 EXIF 坐标同一策略）
-        var picks = [
-          ['country_name', a.country || a.country_name],
-          ['admin1', a.state || a.province || a.region],
-          ['admin2', a.county || a.district || a.city_district],
-          ['locality', a.city || a.town || a.village || a.municipality],
-        ];
-        var filled = [];
-        picks.forEach(function (kv) {
-          if (!kv[1]) return;
-          var el = document.querySelector('[data-field="' + kv[0] + '"]');
-          if (el && !el.value) { el.value = kv[1]; filled.push(kv[1]); }
-        });
-        if (filled.length) {
-          scheduleSave();
-          if (hint) hint.textContent = '已按坐标填入：' + filled.join(' · ') + '（仅空缺字段，可修改）';
-        } else if (hint) {
-          hint.textContent = '已识别：' + [a.country, a.state, a.county || a.city].filter(Boolean).join(' · ') + '（地点信息已填写，未改动）';
-        }
-      }).catch(function () { if (hint) hint.textContent = '地址识别失败（网络）——可手动填写'; });
-    }, 700); // 防抖：拖动/连续点击时只在停下后请求一次（Nominatim 限速 1 次/秒）
+      // 服务端代理：天地图优先（国内可达），Nominatim 兜底（海外），密钥不出服务端
+      window.__sfnFetch('/studio/api/regeo?lat=' + lat + '&lng=' + lng, {}, 15000)
+        .then(function (r) { return r.ok ? r.json() : null; })
+        .then(function (j) {
+          if (!j || !j.ok) { if (hint) hint.textContent = '未能识别地址——可手动填写'; return; }
+          // 只填空字段：手工填过的内容绝不覆盖（与 EXIF 坐标同一策略）
+          var picks = [
+            ['country_name', j.country],
+            ['admin1', j.admin1],
+            ['admin2', j.admin2],
+            ['locality', j.locality],
+          ];
+          var filled = [];
+          picks.forEach(function (kv) {
+            if (!kv[1]) return;
+            var el = document.querySelector('[data-field="' + kv[0] + '"]');
+            if (el && !el.value) { el.value = kv[1]; filled.push(kv[1]); }
+          });
+          if (filled.length) {
+            scheduleSave();
+            if (hint) hint.textContent = '已按坐标填入：' + filled.join(' · ') + '（仅空缺字段，可修改）';
+          } else if (hint) {
+            hint.textContent = '已识别：' + (j.formatted || '该位置') + '（地点信息已填写，未改动）';
+          }
+        })
+        .catch(function () { if (hint) hint.textContent = '地址识别失败（网络）——可手动填写'; });
+    }, 700); // 防抖：拖动/连续点击时只在停下后请求一次
   }
 
   $('#btn-map').addEventListener('click', function () {
@@ -780,17 +782,24 @@ const OBS_EDITOR_JS = `
     mapBox.textContent = '地图加载中…';
     var css = document.createElement('link');
     css.rel = 'stylesheet';
-    css.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
+    css.href = '/studio-leaflet.css';
     document.head.appendChild(css);
     var js = document.createElement('script');
-    js.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
+    js.src = '/studio-leaflet.js';
     js.onload = function () {
       mapLoaded = true;
       mapBox.className = '';
       mapBox.innerHTML = '<div class="map-inner" id="map-inner"></div><div class="map-hint">点击或拖动标记调整坐标（WGS84）</div>';
       var lat = parseFloat(latEl.value) || 30.0, lng = parseFloat(lngEl.value) || 105.0;
       mapObj = L.map('map-inner', { zoomControl: false }).setView([lat, lng], latEl.value ? 13 : 4);
-      L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap' }).addTo(mapObj);
+      var TDT = boot.tiandituKey || '';
+      if (TDT) {
+        // 天地图（CGCS2000 ≈ WGS84，无偏移，国内官方服务）：底图 + 中文注记
+        L.tileLayer('https://t{s}.tianditu.gov.cn/DataServer?T=vec_w&x={x}&y={y}&l={z}&tk=' + TDT, { subdomains: '01234567', attribution: '© 天地图', maxZoom: 18 }).addTo(mapObj);
+        L.tileLayer('https://t{s}.tianditu.gov.cn/DataServer?T=cva_w&x={x}&y={y}&l={z}&tk=' + TDT, { subdomains: '01234567', maxZoom: 18 }).addTo(mapObj);
+      } else {
+        L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap' }).addTo(mapObj);
+      }
       marker = L.marker([lat, lng], { draggable: true }).addTo(mapObj);
       function apply() {
         var p = marker.getLatLng();

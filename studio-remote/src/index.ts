@@ -32,6 +32,8 @@ import { invitePage } from './invites';
 import { OBS_EDITOR_SCRIPT, NOTE_EDITOR_SCRIPT, LOGIN_SCRIPT, PROFILE_SCRIPT, IMPORT_SCRIPT } from './editorjs';
 import { allTaxonOptions, createWorkingTaxon, findTaxonOptionBySlug, mergeWorkingTaxon, renameWorkingTaxon } from './taxa';
 import { suggestGenera, suggestSpecies, validateFormalName } from './wsc';
+import leafletJs from './vendor/leaflet.js.txt';
+import leafletCss from './vendor/leaflet.css.txt';
 
 const app = new Hono<{ Bindings: Env; Variables: { user: StudioUser } }>();
 
@@ -107,6 +109,10 @@ app.get('/studio.css', (c) => c.body(STYLES, 200, { 'Content-Type': 'text/css; c
 app.get('/studio-editor.js', (c) => c.body(OBS_EDITOR_SCRIPT, 200, { 'Content-Type': 'text/javascript; charset=utf-8' }));
 app.get('/studio-note-editor.js', (c) => c.body(NOTE_EDITOR_SCRIPT, 200, { 'Content-Type': 'text/javascript; charset=utf-8' }));
 app.get('/studio-import.js', (c) => c.body(IMPORT_SCRIPT, 200, { 'Content-Type': 'text/javascript; charset=utf-8' }));
+
+// 自托管 Leaflet（不再依赖 unpkg——国内不稳定）；内容随版本固定，可长缓存
+app.get('/studio-leaflet.js', (c) => c.body(leafletJs, 200, { 'Content-Type': 'text/javascript; charset=utf-8', 'Cache-Control': 'public, max-age=604800' }));
+app.get('/studio-leaflet.css', (c) => c.body(leafletCss, 200, { 'Content-Type': 'text/css; charset=utf-8', 'Cache-Control': 'public, max-age=604800' }));
 app.get('/studio-login.js', (c) => c.body(LOGIN_SCRIPT, 200, { 'Content-Type': 'text/javascript; charset=utf-8' }));
 
 // ---------- R2 派生图（Studio 内部展示用；公开站仍由构建管线产出自己的派生图） ----------
@@ -1167,6 +1173,60 @@ app.post('/studio/api/exif-preview', async (c) => {
   return c.json({ results: [{ filename: file.name, date: s.date ?? null, datetime: s.datetime ?? null, gps: s.gps ?? null, camera: s.camera ?? null }] });
 });
 
+// 逆地理：坐标 → 行政区划（只填空缺字段用）。天地图优先（国内可达），Nominatim 兜底（海外/未配置密钥）
+app.get('/studio/api/regeo', async (c) => {
+  user(c);
+  const lat = parseFloat(c.req.query('lat') || '');
+  const lng = parseFloat(c.req.query('lng') || '');
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return c.json({ error: 'bad coords' }, 400);
+  const tk = c.env.TIANDITU_KEY;
+  if (tk) {
+    try {
+      const r = await fetch(
+        'https://api.tianditu.gov.cn/geocoder?postStr=' + encodeURIComponent(JSON.stringify({ lon: lng, lat: lat, ver: 1 })) + '&type=geocode&tk=' + tk,
+        { signal: AbortSignal.timeout(8000) } as any,
+      );
+      if (r.ok) {
+        const j = (await r.json()) as any;
+        const res = j?.result;
+        const ac = res?.addressComponent;
+        // 海外坐标天地图通常给不出省级区划 → 落到 Nominatim
+        if (res && (ac?.province || ac?.county)) {
+          return c.json({
+            ok: true, source: 'tianditu',
+            formatted: res.formatted_address || '',
+            country: '中国',
+            admin1: ac.province || '',
+            admin2: ac.county || ac.city || '',
+            locality: ac.road || ac.township || ac.county || '',
+          });
+        }
+      }
+    } catch { /* 落到兜底 */ }
+  }
+  try {
+    const r = await fetch(
+      'https://nominatim.openstreetmap.org/reverse?format=jsonv2&zoom=10&addressdetails=1&accept-language=zh-CN&lat=' + lat + '&lon=' + lng,
+      { headers: { 'User-Agent': 'salticidnotes-studio/1.0' }, signal: AbortSignal.timeout(8000) } as any,
+    );
+    if (r.ok) {
+      const j = (await r.json()) as any;
+      const a = j?.address;
+      if (a) {
+        return c.json({
+          ok: true, source: 'nominatim',
+          formatted: j.display_name || '',
+          country: a.country || a.country_name || '',
+          admin1: a.state || a.province || a.region || '',
+          admin2: a.county || a.district || a.city_district || '',
+          locality: a.city || a.town || a.village || a.municipality || '',
+        });
+      }
+    }
+  } catch { /* 双双失败 → 502 */ }
+  return c.json({ ok: false, error: 'unavailable' }, 502);
+});
+
 // ---------- 札记 ----------
 
 app.post('/studio/api/notes', async (c) => {
@@ -1256,7 +1316,7 @@ app.post('/studio/api/notes/preview', async (c) => {
 
 app.get('/studio/observations/new', async (c) => {
   user(c);
-  return c.html(obsEditorHtml(null, {}, [], { status: 'draft', hasUnpublished: false, photoMeta: [] }, await allTaxonOptions(c.env)));
+  return c.html(obsEditorHtml(null, {}, [], { status: 'draft', hasUnpublished: false, photoMeta: [], tiandituKey: c.env.TIANDITU_KEY ?? '' }, await allTaxonOptions(c.env)));
 });
 
 app.get('/studio/observations/:public_id/edit', async (c) => {
@@ -1285,6 +1345,7 @@ app.get('/studio/observations/:public_id/edit', async (c) => {
     status: obs.status,
     hasUnpublished: obs.status === 'published' && String(obs.updated_at ?? '') > String(obs.published_at ?? ''),
     photoMeta: grid.map((g) => ({ public_id: g.public_id, caption: g.caption, photographer_name: g.photographer_name, view_type: g.view_type })),
+    tiandituKey: c.env.TIANDITU_KEY ?? '',
   };
   return c.html(obsEditorHtml(obs.public_id, data, grid, bootMeta, await allTaxonOptions(c.env)));
 });

@@ -9,6 +9,8 @@ export interface Env {
   MAIL_FROM?: string;
   /** 发布自动同步到 GitHub 仓库用（规则 5/7）；未配置时发布仍可用，仅不同步 */
   GITHUB_TOKEN?: string;
+  /** 天地图密钥：地图瓦片与逆地理（国内可达）；未配置时回退 OSM/Nominatim（海外可达） */
+  TIANDITU_KEY?: string;
 }
 
 export type Row = Record<string, any>;
