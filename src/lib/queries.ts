@@ -261,11 +261,12 @@ export function getLocalityCards(): LocalityCard[] {
     const pid = observationPlaceId(o);
     if (pid && !card.place_id) card.place_id = pid;
     if (o.habitat && !card.habitats.includes(o.habitat)) card.habitats.push(o.habitat);
-    // 封面层级（§110 修订）：生境 > 行为 > 其他——蜘蛛肖像只在没有环境影像时兜底
-    if (o.cover) {
+    // 封面层级（§110 修订）：遍历观察全部照片（生境照常非代表图），生境 > 行为 > 其他
+    for (const m of o.media) {
       const rank = (v: string) => (v === 'habitat' ? 2 : v === 'behavior' ? 1 : 0);
-      const cand = { thumb: o.cover.thumb, medium: o.cover.medium, large: o.cover.large, view_type: o.cover.view_type };
-      if (!card.cover || rank(cand.view_type) > rank(card.cover.view_type)) card.cover = cand;
+      if (!card.cover || rank(m.view_type) > rank(card.cover.view_type)) {
+        card.cover = { thumb: m.thumb, medium: m.medium, large: m.large, view_type: m.view_type };
+      }
     }
   }
   return [...byLocality.values()].sort((a, b) => b.count - a.count);
