@@ -120,7 +120,7 @@
     "caption": null,
     "sort_order": 1,
     "is_cover": true,
-    "photographer_profile_id": null,
+    "photographer_profile_id": "prof-hamu",
     "photographer_name": "哈姆",
     "license": "all_rights_reserved",
     "visibility": "public"
