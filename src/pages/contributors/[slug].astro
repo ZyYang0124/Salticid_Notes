@@ -41,7 +41,7 @@ const featuredMedias = [...allMedia.filter((m) => m.caption), ...allMedia.filter
   {/* --- 人物 Hero：先看见人，再看见记录（§25/§26） --- */}
   <header class="cd-hero container">
     <div class="cd-photo">
-      {(c.photo ?? c.favorite) && <img src={(c.photo ?? c.favorite)!.medium} alt={`${c.name}`} loading="eager" />}
+      {(c.photo ?? c.favorite) && <img src={(c.photo ?? c.favorite)!.medium} alt={`${c.name}`} loading="eager"  decoding="async" />}
     </div>
     <div class="cd-intro">
       <div class="kicker on-paper">伙 伴</div>

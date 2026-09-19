@@ -34,7 +34,7 @@ const older = idx >= 0 && idx < ordered.length - 1 ? ordered[idx + 1] : null; //
 
     {post.cover && (
       <figure class="story-cover">
-        <img src={post.cover.large} alt={post.title} fetchpriority="high" />
+        <img src={post.cover.large} alt={post.title} fetchpriority="high" width={post.cover.width} height={post.cover.height} decoding="async" />
       </figure>
     )}
 

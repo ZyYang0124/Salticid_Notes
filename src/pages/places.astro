@@ -36,7 +36,7 @@ for (const c of cards) {
             {list.map((c) => (
               c.place_id ? (
                 <a class="place-card" href={withBase(`/places/${c.place_id}/`)}>
-                  <div class="frame">{c.cover && <img src={c.cover.medium} alt={c.name} loading="lazy" />}</div>
+                  <div class="frame">{c.cover && <img src={c.cover.medium} alt={c.name} loading="lazy"  decoding="async" />}</div>
                   <div class="name">{c.name}</div>
                   <div class="meta">
                     {c.admin1}
@@ -47,7 +47,7 @@ for (const c of cards) {
                 </a>
               ) : (
                 <div class="place-card">
-                  <div class="frame">{c.cover && <img src={c.cover.medium} alt={c.name} loading="lazy" />}</div>
+                  <div class="frame">{c.cover && <img src={c.cover.medium} alt={c.name} loading="lazy"  decoding="async" />}</div>
                   <div class="name">{c.name}</div>
                   <div class="meta">
                     {c.admin1}

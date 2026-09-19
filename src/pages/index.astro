@@ -210,7 +210,7 @@ const places = getLocalityCards().slice(0, 3);
       <div class="place-cards">
         {places.map((p) => (
           <a class="place-card" href={withBase('/places/')}>
-            <div class="frame">{p.cover && <img src={p.cover.medium} alt={p.name} loading="lazy" />}</div>
+            <div class="frame">{p.cover && <img src={p.cover.medium} alt={p.name} loading="lazy"  decoding="async" />}</div>
             <div class="name">{p.name}</div>
             <div class="meta">{p.country_name === '中国' ? p.admin1 : p.country_name + ' · ' + p.admin1} · {p.count} 次相遇{p.elevation != null ? ` · 海拔约 ${p.elevation} m` : ''}</div>
           </a>
