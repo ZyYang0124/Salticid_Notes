@@ -4,6 +4,7 @@ import Base from '../../layouts/Base.astro';
 import { getPublishedPost, getPublishedPosts, getPostLinks } from '../../lib/queries';
 import { withBase } from '../../lib/privacy';
 import { formatDate, sciNameHtml } from '../../lib/format';
+import { noteTemplateOf } from '../../lib/noteTemplates';
 
 export function getStaticPaths() {
   return getPublishedPosts().map((p) => ({ params: { slug: p.slug } }));
@@ -20,7 +21,7 @@ const older = idx >= 0 && idx < ordered.length - 1 ? ordered[idx + 1] : null; //
 ---
 
 <Base title={post.title} description={post.bodyHtml.replace(/<[^>]+>/g, ' ').slice(0, 90)}>
-  <article class="story">
+  <article class={`story tpl-${noteTemplateOf(post.template)}`}>
     <header class="story-hero">
       <div class="hero-kicker">札 记</div>
       <h1 class="hero-title">{post.title}</h1>
@@ -34,7 +35,7 @@ const older = idx >= 0 && idx < ordered.length - 1 ? ordered[idx + 1] : null; //
 
     {post.cover && (
       <figure class="story-cover">
-        <img src={post.cover.large} alt={post.title} fetchpriority="high" width={post.cover.width} height={post.cover.height} decoding="async" />
+        <img src={post.cover.large} alt={post.title} fetchpriority="high" />
       </figure>
     )}
 

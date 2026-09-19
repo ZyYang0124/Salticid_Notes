@@ -437,6 +437,33 @@ details.more .grid { display:grid; grid-template-columns:1fr 1fr 1fr; gap:0 22px
   border:1px solid #ecd9bd; border-radius:8px; padding:8px 12px; margin:10px 0 0;
 }
 
+/* 札记版式选择器 */
+.tpl-picker { display:flex; gap:8px; overflow-x:auto; padding:6px 2px 12px; }
+.tpl-opt {
+  flex:0 0 auto; font:inherit; text-align:left; cursor:pointer;
+  background:#fff; border:1px solid var(--line); border-radius:10px; padding:8px 12px;
+  display:flex; flex-direction:column; gap:1px; min-width:120px;
+}
+.tpl-opt b { font-size:13.5px; }
+.tpl-opt span { font-size:11px; color:var(--faint); }
+.tpl-opt:hover { border-color:var(--faint); }
+.tpl-opt.on { border-color:var(--terra); box-shadow:0 0 0 1px var(--terra) inset; }
+.tpl-opt.on b { color:var(--terra); }
+
+/* 预览面板的模板特征（简化版，正式版式以主站为准） */
+#pane-preview.tpl-folio .pv-body { columns:2; column-gap:32px; }
+#pane-preview.tpl-dropcap .pv-body > p:first-of-type::first-letter { float:left; font-family:var(--serif); font-size:3.2em; line-height:.85; padding:4px 8px 0 0; color:var(--terra); font-weight:700; }
+#pane-preview.tpl-field .pv-body { background:repeating-linear-gradient(0deg, transparent 0 27px, var(--line-soft) 27px 28px); padding:4px 14px; }
+#pane-preview.tpl-quiet .pv-body { max-width:420px; margin:0 auto; }
+#pane-preview.tpl-inversa { background:#1d1a14; color:#eae5d8; padding:20px; border-radius:6px; }
+#pane-preview.tpl-inversa .pv-body { color:#eae5d8; }
+#pane-preview.tpl-bigtype .pv-body h2::before { content:counter(sec, decimal-leading-zero); display:block; font-size:12px; color:var(--terra); letter-spacing:.2em; }
+#pane-preview.tpl-bigtype .pv-body { counter-reset:sec; }
+#pane-preview.tpl-tiba .pv-title::before { content:'「'; color:var(--terra); }
+#pane-preview.tpl-tiba .pv-title::after { content:'」'; color:var(--terra); }
+#pane-preview.tpl-gallery .pv-body { text-align:center; }
+#pane-preview.tpl-marginalia .pv-body blockquote { border-left:3px solid var(--terra); background:none; }
+
 /* ---------- 批量导入 ---------- */
 .imp-drop {
   border:2px dashed var(--line); border-radius:14px; padding:36px 20px; text-align:center;
@@ -1221,6 +1248,20 @@ export function taxaManagePage(
 
 // ---------- 札记编辑器（写作模式） ----------
 
+/** 札记版式模板（与公开站 src/lib/noteTemplates.ts 一致） */
+const NOTE_TEMPLATES: { id: string; name: string; desc: string }[] = [
+  { id: 'classic', name: '经典', desc: '衬线长文，默认版式' },
+  { id: 'folio', name: '双栏杂志', desc: '宽屏双栏 + 首字下沉' },
+  { id: 'dropcap', name: '首字沉金', desc: '陶土红大写首字' },
+  { id: 'marginalia', name: '旁注批言', desc: '引文浮动为旁注' },
+  { id: 'gallery', name: '画册', desc: '通栏大图，图为主角' },
+  { id: 'field', name: '野外手记', desc: '横线稿纸底 + 等宽小节' },
+  { id: 'bigtype', name: '大字报', desc: '巨型标题 + 编号小节' },
+  { id: 'quiet', name: '留白', desc: '窄栏居中极简' },
+  { id: 'inversa', name: '夜刊', desc: '墨底纸字反色卡' },
+  { id: 'tiba', name: '题跋', desc: '巨型引号题头' },
+];
+
 export function noteEditorHtml(slug: string | null, data: Record<string, any>): string {
   const published = data.status === 'published';
   const actions = `
@@ -1239,6 +1280,9 @@ export function noteEditorHtml(slug: string | null, data: Record<string, any>): 
         <span class="sep" aria-hidden="true"></span>
         <button type="button" data-cmd="image" title="插入图片">插图</button>
         <button type="button" data-cmd="obs" title="插入观察卡片">观察</button>
+      </div>
+      <div class="tpl-picker" id="tpl-picker" role="radiogroup" aria-label="版式模板">
+        ${NOTE_TEMPLATES.map((t) => `<button type="button" class="tpl-opt${(data.template ?? 'classic') === t.id ? ' on' : ''}" data-tpl="${t.id}" title="${t.desc}"><b>${t.name}</b><span>${t.desc}</span></button>`).join('')}
       </div>
       <input id="n-title" class="title-line" placeholder="标题" value="${esc(data.title ?? '')}" autocomplete="off" />
       <input id="n-subtitle" class="subtitle-line" placeholder="副标题（可选）" value="${esc(data.subtitle ?? '')}" autocomplete="off" />
@@ -1287,6 +1331,7 @@ export function noteEditorHtml(slug: string | null, data: Record<string, any>): 
       slug: ${jsonForScript(slug ?? null)},
       bodyMd: ${jsonForScript(data.body_md ?? '')},
       status: ${jsonForScript(data.status ?? 'draft')},
+      template: ${jsonForScript(data.template ?? 'classic')},
     };
   </script>
   <script src="/studio-note-editor.js"></script>`, null, { editor: true, actions });

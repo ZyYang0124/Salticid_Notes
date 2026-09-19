@@ -1229,13 +1229,17 @@ app.get('/studio/api/regeo', async (c) => {
 
 // ---------- 札记 ----------
 
+/** 札记版式模板白名单（与公开站 src/lib/noteTemplates.ts 保持一致） */
+const NOTE_TPL_IDS = ['classic', 'folio', 'dropcap', 'marginalia', 'gallery', 'field', 'bigtype', 'quiet', 'inversa', 'tiba'];
+const tplOf = (v: unknown, fallback: string): string => (typeof v === 'string' && NOTE_TPL_IDS.includes(v) ? v : fallback);
+
 app.post('/studio/api/notes', async (c) => {
   const u = user(c);
   if (!sameOrigin(c.req.raw)) return c.text('Forbidden', 403);
   const seq = await nextCounter(c.env.DB, 'post');
   const body = (await c.req.json()) as Record<string, string>;
   const slug = `note-${String(seq).padStart(3, '0')}`;
-  await run(c.env.DB, 'INSERT INTO posts (slug, author_id, title, subtitle, body_md, status) VALUES (?,?,?,?,?,?)', slug, u.id, String(body.title ?? '未命名札记').slice(0, 160), body.subtitle ?? null, String(body.body_md ?? ''), 'draft');
+  await run(c.env.DB, 'INSERT INTO posts (slug, author_id, title, subtitle, body_md, status, template) VALUES (?,?,?,?,?,?,?)', slug, u.id, String(body.title ?? '未命名札记').slice(0, 160), body.subtitle ?? null, String(body.body_md ?? ''), 'draft', tplOf(body.template, 'classic'));
   await audit(c.env, u.display_name, 'post', slug, 'create-draft');
   return c.json({ ok: true, slug, edit_url: `/studio/notes/${slug}/edit` });
 });
@@ -1261,11 +1265,12 @@ app.patch('/studio/api/notes/:slug', async (c) => {
   const related = parseRelatedIds(body.related_observation_public_ids);
   await run(
     c.env.DB,
-    "UPDATE posts SET title = ?, subtitle = ?, body_md = ?, related_observation_public_ids = ?, updated_at = datetime('now') WHERE id = ?",
+    "UPDATE posts SET title = ?, subtitle = ?, body_md = ?, related_observation_public_ids = ?, template = ?, updated_at = datetime('now') WHERE id = ?",
     String(body.title ?? '').slice(0, 160),
     typeof body.subtitle === 'string' ? body.subtitle : null,
     String(body.body_md ?? ''),
     JSON.stringify(related),
+    tplOf(body.template, String(post.template ?? 'classic')),
     post.id,
   );
   // 已发布札记的显式保存：审计 + 立即同步主站（§29）
@@ -1360,7 +1365,7 @@ app.get('/studio/import', async (c) => {
 
 app.get('/studio/notes/new', async (c) => {
   const u = user(c);
-  return c.html(noteEditorHtml('', { title: '', subtitle: '', body_md: '', status: 'draft', author_name: u.display_name, related: '' }));
+  return c.html(noteEditorHtml('', { title: '', subtitle: '', body_md: '', status: 'draft', template: 'classic', author_name: u.display_name, related: '' }));
 });
 
 app.get('/studio/notes/:slug/edit', async (c) => {

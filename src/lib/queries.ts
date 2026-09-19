@@ -24,6 +24,7 @@ import {
 import type { Taxon, TaxonRank } from './types';
 import { renderBodyMd, applyDuoLayout } from './markdown';
 import { shortRegion } from './format';
+import { noteTemplateOf } from './noteTemplates';
 
 const publishedObservationIds = new Set(
   observations.filter((o) => o.status === 'published' && o.visibility === 'public').map((o) => o.id),
@@ -563,6 +564,8 @@ export interface PublicPost {
   /** 野外笔记元信息（由调查合并而来的篇目携带） */
   region?: string | null;
   dateRange?: string | null;
+  /** 版式模板 id（noteTemplates 白名单，未知值按 classic） */
+  template: string;
 }
 
 function postCover(mediaPublicId: string | null) {
@@ -598,6 +601,7 @@ export function getPublishedPosts(): PublicPost[] {
         ),
         region: hand.region ?? null,
         dateRange: hand.date_range ?? null,
+        template: noteTemplateOf(p.template),
       };
     })
     .sort((a, b) => b.created_at.localeCompare(a.created_at));

@@ -151,6 +151,16 @@ export async function collectExport(env: Env): Promise<ExportData> {
   }));
 
   const posts = await all<any>(env.DB, "SELECT * FROM posts WHERE status = 'published' ORDER BY created_at DESC");
+  // 用户表（供 posts 作者名与 profiles 段共用）
+  const users = await all<any>(
+    env.DB,
+    `SELECT u.id, u.email, u.display_name, p.title, p.bio, p.photo_media_id
+     FROM users u LEFT JOIN user_profiles p ON p.user_id = u.id
+     WHERE u.email IS NOT NULL`,
+  );
+  const authorNameById = new Map<number, string>();
+  for (const u of users) authorNameById.set(u.id, u.display_name);
+
   const postsOut = [];
   for (const p of posts) {
     const bodyMd = String(p.body_md ?? '');
@@ -188,7 +198,8 @@ export async function collectExport(env: Env): Promise<ExportData> {
       slug: p.slug,
       title: p.title,
       subtitle: p.subtitle,
-      author_name: '咩咩',
+      template: p.template || 'classic',
+      author_name: authorNameById.get(p.author_id) ?? '咩咩',
       created_at: p.created_at,
       published_at: p.published_at,
       cover_media_public_id: coverRow?.public_id ?? null,
@@ -220,12 +231,6 @@ export async function collectExport(env: Env): Promise<ExportData> {
   }));
 
   // 伙伴公开资料（§26/§29）：每位有授权邮箱的账号导出稳定档案；代表照片随包入库
-  const users = await all<any>(
-    env.DB,
-    `SELECT u.id, u.email, u.display_name, p.title, p.bio, p.photo_media_id
-     FROM users u LEFT JOIN user_profiles p ON p.user_id = u.id
-     WHERE u.email IS NOT NULL`,
-  );
   const profilesOut: unknown[] = [];
   for (const u of users) {
     const email = String(u.email ?? '').toLowerCase();

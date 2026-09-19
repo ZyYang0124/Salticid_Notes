@@ -209,4 +209,6 @@ export interface Post {
   related_observation_public_ids: string[];
   body_md: string;
   body_html: string;
+  /** 版式模板 id（noteTemplates.ts 白名单，未知值按 classic 呈现） */
+  template?: string;
 }

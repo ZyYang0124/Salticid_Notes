@@ -1298,7 +1298,29 @@ const NOTE_EDITOR_JS = `
     if (published && !dirty) { btn.textContent = '已发布 ✓'; btn.disabled = true; }
     else { btn.textContent = published ? '保存修改' : '发布'; btn.disabled = false; }
   }
-  function payload() { return { title: title.value, subtitle: sub.value, body_md: body.value }; }
+  var tpl = (window.__NOTE_BOOT && window.__NOTE_BOOT.template) || 'classic';
+  var tplPicker = $('#tpl-picker');
+  function applyTpl(id, save) {
+    tpl = id;
+    if (tplPicker) {
+      Array.prototype.slice.call(tplPicker.querySelectorAll('.tpl-opt')).forEach(function (b) {
+        b.classList.toggle('on', b.getAttribute('data-tpl') === id);
+      });
+    }
+    var pv = $('#pane-preview');
+    if (pv) pv.className = 'article-body preview-pane tpl-' + id;
+    if (save) schedule();
+  }
+  if (tplPicker) {
+    Array.prototype.slice.call(tplPicker.querySelectorAll('.tpl-opt')).forEach(function (b) {
+      b.addEventListener('click', function () {
+        var id = b.getAttribute('data-tpl');
+        if (id && id !== tpl) applyTpl(id, true);
+      });
+    });
+  }
+  applyTpl(tpl, false);
+  function payload() { return { title: title.value, subtitle: sub.value, body_md: body.value, template: tpl }; }
   // 发布时刻的内容快照：之后的保存若与快照一致，不再误报「有未发布修改」
   var lastPublishedSnapshot = null;
   function snapshotNow() {
