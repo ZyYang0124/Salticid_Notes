@@ -290,6 +290,17 @@ button.act-btn { cursor:pointer; }
 }
 .photo.cover .badge { background:var(--accent); }
 .photo.uploading { opacity:.55; }
+.photo.failed img { opacity:.4; filter:grayscale(.4); }
+.photo .ph-veil {
+  position:absolute; inset:0; background:rgba(20,17,12,.5);
+  display:flex; align-items:center; justify-content:center; color:#fff;
+}
+.photo .ph-pct, .photo .ph-veil [data-pct] { font-size:13px; font-weight:600; letter-spacing:.04em; }
+.photo .ph-retry {
+  font:inherit; font-size:12px; color:#fff; background:rgba(181,64,44,.92);
+  border:none; border-radius:99px; padding:5px 12px; cursor:pointer;
+}
+.photo .ph-retry:hover { background:#a03422; }
 .photo-grid-add {
   aspect-ratio:1; border-radius:10px; border:1.5px dashed var(--line); background:none;
   color:var(--faint); font-size:22px; display:flex; align-items:center; justify-content:center; cursor:pointer;
@@ -920,7 +931,7 @@ export function obsEditorHtml(
       <div id="drop-big" class="drop-big"${photos.length ? ' hidden' : ''}>
         <span class="plus">＋</span>
         <b>添加照片</b>
-        <span>拍照 · 从相册选择 · 可多选</span>
+        <span>拍照 · 从相册选择 · 可多选 · 支持 Ctrl+V 粘贴</span>
       </div>
       <div class="photo-grid" id="photo-grid">${photoGrid}</div>
       <button type="button" class="photo-grid-add" id="photo-add"${photos.length ? '' : ' hidden'} aria-label="添加照片">＋</button>

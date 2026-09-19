@@ -144,6 +144,25 @@ window.__sfnFetch = function (url, opts, timeoutMs) {
   var t = setTimeout(function () { ctrl.abort(); }, timeoutMs || 90000);
   return fetch(url, Object.assign({}, opts, { signal: ctrl.signal })).finally(function () { clearTimeout(t); });
 };
+// XHR 上传：fetch 拿不到上传进度，进度条必须走 xhr.upload.onprogress
+window.__sfnUpload = function (url, fd, onProgress, timeoutMs) {
+  return new Promise(function (resolve, reject) {
+    var xhr = new XMLHttpRequest();
+    xhr.open('POST', url);
+    xhr.timeout = timeoutMs || 300000;
+    xhr.onload = function () {
+      var j = null;
+      try { j = JSON.parse(xhr.responseText); } catch (e) {}
+      resolve({ ok: xhr.status >= 200 && xhr.status < 300, status: xhr.status, json: j });
+    };
+    xhr.onerror = function () { reject(new Error('网络错误，请检查网络后重试')); };
+    xhr.ontimeout = function () { reject(new Error('上传超时，请检查网络后重试')); };
+    if (xhr.upload && onProgress) {
+      xhr.upload.onprogress = function (e) { if (e.lengthComputable) onProgress(e.loaded / e.total); };
+    }
+    xhr.send(fd);
+  });
+};
 `;
 
 // ==================== 观察编辑器 ====================
@@ -806,8 +825,17 @@ const OBS_EDITOR_JS = `
   function rerenderGrid() {
     grid.innerHTML = photos.map(function (pid, i) {
       var cover = i === 0;
-      return '<div class="photo' + (cover ? ' cover' : '') + '" data-pid="' + pid + '">' +
-        '<img src="' + thumbOf(pid) + '" alt="" /><span class="badge">' + (cover ? '★' : (i + 1)) + '</span></div>';
+      var meta = window.__photoMeta[pid] || {};
+      var src = meta.local || thumbOf(pid);
+      var veil = '';
+      if (meta.state === 'uploading') {
+        veil = '<div class="ph-veil"><span data-pct>' + Math.round((meta.progress || 0) * 100) + '%</span></div>';
+      } else if (meta.state === 'error') {
+        veil = '<div class="ph-veil ph-veil-err"><button type="button" class="ph-retry" data-retry="' + pid + '">↻ 重试</button></div>';
+      }
+      var cls = 'photo' + (cover ? ' cover' : '') + (meta.state === 'uploading' ? ' uploading' : '') + (meta.state === 'error' ? ' failed' : '');
+      return '<div class="' + cls + '" data-pid="' + pid + '">' +
+        '<img src="' + src + '" alt="" />' + veil + '<span class="badge">' + (cover ? '★' : (i + 1)) + '</span></div>';
     }).join('') ;
     addBtn.hidden = false;
     dropBig.hidden = photos.length > 0;
@@ -815,6 +843,17 @@ const OBS_EDITOR_JS = `
   }
   function bindGrid() {
     $all('#photo-grid .photo').forEach(function (n) {
+      var pid = n.getAttribute('data-pid');
+      var meta = window.__photoMeta[pid] || {};
+      if (meta.state) {
+        // 本地临时格：不上面板、不可拖；失败格提供单张重试
+        var btn = n.querySelector('[data-retry]');
+        if (btn) btn.addEventListener('click', function (e) {
+          e.stopPropagation();
+          if (publicId && meta.state === 'error') uploadOne(publicId, pid);
+        });
+        return;
+      }
       n.setAttribute('draggable', 'true');
       n.addEventListener('click', function () { openPanel(n.getAttribute('data-pid')); });
       n.addEventListener('dragstart', function (e) { e.dataTransfer.setData('text/plain', n.getAttribute('data-pid')); });
@@ -834,9 +873,14 @@ const OBS_EDITOR_JS = `
   }
   function pushOrder() {
     if (!publicId) return;
+    // 仍在队列里的本地临时格没有编号，不参与服务端排序
+    var order = photos.filter(function (x) {
+      var m = window.__photoMeta[x];
+      return !(m && m.local);
+    });
     lastPublishedSnapshot = null; // 照片顺序变化视为发布后修改
     return fetch('/studio/api/observations/' + publicId + '/photos/order', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ order: photos }),
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ order: order }),
     });
   }
   var panelPid = null;
@@ -897,6 +941,92 @@ const OBS_EDITOR_JS = `
   (boot.photoMeta || []).forEach(function (m) { window.__photoMeta[m.public_id] = m; });
   if (photos.length) bindGrid();
 
+  // ---- 上传队列：乐观本地预览 + 并发 3 路 + 逐张进度 / 单张重试（iNat 式工作区） ----
+  var localSeq = 0, inflight = 0;
+  var batch = { total: 0, done: 0, added: 0, failed: 0 };
+  function setInflight(n) {
+    inflight = n;
+    window.__sfnInflight = n; // beforeunload 守卫读取
+    if (addBtn) addBtn.disabled = n > 0;
+    dropBig.style.pointerEvents = n > 0 ? 'none' : '';
+  }
+  function tileEl(pid) { return grid.querySelector('[data-pid="' + pid + '"]'); }
+  function updateTileProgress(tid, p) {
+    var el = tileEl(tid);
+    if (!el) return;
+    var pct = el.querySelector('[data-pct]');
+    if (pct) pct.textContent = Math.round(p * 100) + '%';
+  }
+  function uploadOne(pid, tid) {
+    var meta = window.__photoMeta[tid];
+    if (!meta || !meta.file) return Promise.resolve();
+    meta.state = 'uploading'; meta.progress = 0; meta.error = '';
+    setInflight(inflight + 1);
+    setStatus('上传中 ' + batch.done + '/' + batch.total + '…');
+    rerenderGrid();
+    return window.__sfnPrepareUpload(meta.file).then(function (prepared) {
+      var fd = new FormData();
+      window.__sfnAppendUpload(fd, prepared);
+      return window.__sfnUpload('/studio/observations/' + pid + '/photos', fd, function (p) {
+        meta.progress = p;
+        updateTileProgress(tid, p);
+      }, 300000);
+    }).then(function (r) {
+      if (r.status === 401) throw new Error('登录已过期，请刷新页面重新登录');
+      if (!r.ok || !r.json || !r.json.ok) throw new Error((r.json && r.json.error) || '上传失败（' + r.status + '）');
+      var realPid = (r.json.added || [])[0];
+      if (!realPid) throw new Error('服务未返回照片编号');
+      // 原地替换：本地临时格 → 服务端照片（位置不变，即文件选择顺序）
+      var idx = photos.indexOf(tid);
+      if (idx >= 0) photos[idx] = realPid;
+      URL.revokeObjectURL(meta.local);
+      delete window.__photoMeta[tid];
+      window.__photoMeta[realPid] = { caption: '', photographer_name: '', view_type: 'other' };
+      batch.added++; batch.done++;
+      rerenderGrid();
+    }).catch(function (e) {
+      meta.state = 'error';
+      meta.error = (e && e.message) || '上传失败';
+      batch.failed++; batch.done++;
+      rerenderGrid();
+      showPhotoErr(meta.error + '（点失败照片上的「↻ 重试」可单张重传）');
+    }).then(function () {
+      setInflight(inflight - 1);
+      if (inflight > 0) setStatus('上传中 ' + batch.done + '/' + batch.total + '…');
+    });
+  }
+  // EXIF 建议与上传并行，不阻塞（§14：不静默覆盖，只给「使用 / 忽略」建议条）
+  function runExifSuggest(first) {
+    var fd0 = new FormData();
+    fd0.append('photo', first);
+    window.__sfnFetch('/studio/api/exif-preview', { method: 'POST', body: fd0 }, 30000)
+      .then(function (r) { return r.ok ? r.json() : {}; })
+      .then(function (xj) {
+        var x = xj.results && xj.results[0];
+        if (!x) return;
+        var bar = $('#exif-suggest');
+        if (!bar) return;
+        var chips = [];
+        var dateEl = document.querySelector('[data-field="observed_at"]');
+        if (x.date) chips.push({ key: 'date', text: '拍摄时间 ' + x.date, apply: function () { if (dateEl) { dateEl.value = x.date; scheduleSave(); } } });
+        if (x.gps) chips.push({ key: 'gps', text: '坐标 ' + x.gps.lat + ', ' + x.gps.lng, apply: function () { latEl.value = x.gps.lat; lngEl.value = x.gps.lng; scheduleSave(); matchAddress(x.gps.lat, x.gps.lng); } });
+        if (!chips.length) return;
+        bar.hidden = false;
+        bar.innerHTML = '<span>从照片读取到：</span>' + chips.map(function (c, i) {
+          return '<span>' + escHtml(c.text) + '</span><button type="button" class="use" data-i="' + i + '">使用</button>';
+        }).join('') + '<button type="button" data-dismiss="1">忽略</button>';
+        Array.prototype.slice.call(bar.querySelectorAll('button')).forEach(function (btn) {
+          btn.addEventListener('click', function () {
+            var i2 = btn.getAttribute('data-i');
+            if (i2 != null) chips[+i2].apply();
+            bar.hidden = true;
+          });
+        });
+        var cam = $('#exif-cam');
+        if (cam && x.camera) cam.textContent = '相机：' + x.camera;
+      })
+      .catch(function () {});
+  }
   function handleFiles(fileList) {
     var all = Array.prototype.slice.call(fileList || []);
     var files = all.filter(function (f) { return /image\\/(jpeg|png)/.test(f.type); });
@@ -907,84 +1037,59 @@ const OBS_EDITOR_JS = `
     }
     if (!files.length) return;
     clearPhotoErr();
-    if (addBtn) addBtn.disabled = true;
-    dropBig.style.pointerEvents = 'none';
     var ensure = publicId ? Promise.resolve(publicId) : create();
     ensure.then(function (pid) {
       if (!pid) { setStatus('创建记录失败', true); return; }
-      var first = files[0];
-      var fd0 = new FormData();
-      fd0.append('photo', first);
-      setStatus('读取照片信息…');
-      return window.__sfnFetch('/studio/api/exif-preview', { method: 'POST', body: fd0 }, 30000)
-        .then(function (r) { return r.ok ? r.json() : {}; })
-        .then(function (xj) {
-          var x = xj.results && xj.results[0];
-          if (!x) return;
-          // §14：EXIF 不静默覆盖——给出「使用 / 忽略」建议条
-          var bar = $('#exif-suggest');
-          if (!bar) return;
-          var chips = [];
-          var dateEl = document.querySelector('[data-field="observed_at"]');
-          if (x.date) chips.push({ key: 'date', text: '拍摄时间 ' + x.date, apply: function () { if (dateEl) { dateEl.value = x.date; scheduleSave(); } } });
-          if (x.gps) chips.push({ key: 'gps', text: '坐标 ' + x.gps.lat + ', ' + x.gps.lng, apply: function () { latEl.value = x.gps.lat; lngEl.value = x.gps.lng; scheduleSave(); matchAddress(x.gps.lat, x.gps.lng); } });
-          if (!chips.length) return;
-          bar.hidden = false;
-          bar.innerHTML = '<span>从照片读取到：</span>' + chips.map(function (c, i) {
-            return '<span>' + escHtml(c.text) + '</span><button type="button" class="use" data-i="' + i + '">使用</button>';
-          }).join('') + '<button type="button" data-dismiss="1">忽略</button>';
-          Array.prototype.slice.call(bar.querySelectorAll('button')).forEach(function (btn) {
-            btn.addEventListener('click', function () {
-              var i2 = btn.getAttribute('data-i');
-              if (i2 != null) chips[+i2].apply();
-              bar.hidden = true;
-            });
-          });
-          var cam = $('#exif-cam');
-          if (cam && x.camera) cam.textContent = '相机：' + x.camera;
-        })
-        .catch(function () {})
-        .then(async function () {
-          var added = [], failed = 0;
-          for (var i = 0; i < files.length; i++) {
-            var prepared;
-            try { prepared = await window.__sfnPrepareUpload(files[i]); }
-            catch (err) { showPhotoErr(err.message || '图片处理失败'); failed++; continue; }
-            var fd = new FormData();
-            window.__sfnAppendUpload(fd, prepared);
-            setStatus('上传照片 ' + (i + 1) + '/' + files.length + '…');
-            try {
-              var r = await window.__sfnFetch('/studio/observations/' + pid + '/photos', { method: 'POST', body: fd });
-              var j = await r.json().catch(function () { return {}; });
-              if (r.status === 401) { showPhotoErr('登录已过期，请刷新页面重新登录'); failed++; break; }
-              if (!r.ok || !j.ok) { showPhotoErr('照片上传失败：' + ((j && j.error) || '请重试')); failed++; continue; }
-              (j.added || []).forEach(function (pid2) {
-                added.push(pid2);
-                photos.push(pid2);
-                window.__photoMeta[pid2] = { caption: '', photographer_name: '', view_type: 'other' };
-                rerenderGrid();
-              });
-            } catch (e2) {
-              showPhotoErr(e2 && e2.name === 'AbortError' ? '上传超时，请检查网络后重试' : '上传失败，请检查网络后重试');
-              failed++;
-            }
-          }
-          if (added.length) {
-            lastPublishedSnapshot = null; // 新照片视为发布后修改
-            lsClear();
-            setStatus('已添加 ' + added.length + ' 张照片' + (failed ? '，' + failed + ' 张失败' : ''));
-            await saveNow(true);
-          } else if (!failed) {
-            setStatus('没有照片被添加', true);
-          }
-        });
+      // 乐观上格：本地预览立即出现，上传在后台进行；照片按选择顺序占位
+      var queue = files.map(function (f) {
+        var tid = 'local-' + (++localSeq);
+        window.__photoMeta[tid] = { caption: '', photographer_name: '', view_type: 'other',
+          local: URL.createObjectURL(f), progress: 0, state: 'uploading', file: f };
+        photos.push(tid);
+        return tid;
+      });
+      rerenderGrid();
+      updateRail();
+      batch.total += queue.length;
+      runExifSuggest(files[0]);
+      var next = 0;
+      function worker() {
+        if (next >= queue.length) return Promise.resolve();
+        var tid = queue[next++];
+        return uploadOne(pid, tid).then(worker);
+      }
+      var workers = [];
+      for (var w = 0; w < Math.min(3, queue.length); w++) workers.push(worker());
+      Promise.all(workers).then(function () {
+        pushOrder(); // 并发到达顺序可能与文件顺序不同，按网格顺序固定排序
+        if (batch.added) {
+          lastPublishedSnapshot = null; // 新照片视为发布后修改
+          lsClear();
+          setStatus('已添加 ' + batch.added + ' 张照片' + (batch.failed ? '，' + batch.failed + ' 张失败（点失败照片上的「↻ 重试」可单张重传）' : ''));
+          saveNow(true);
+        } else if (batch.failed) {
+          showPhotoErr('照片上传失败（点失败照片上的「↻ 重试」可单张重传）');
+        }
+      });
     }).catch(function (e) {
       showPhotoErr(e && e.message ? e.message : '上传未能开始，请重试');
-    }).finally(function () {
-      if (addBtn) addBtn.disabled = false;
-      dropBig.style.pointerEvents = '';
     });
   }
+  // 离开保护：有照片在上传时，关页 / 跳页先确认
+  if (!window.__sfnUnloadGuard) {
+    window.__sfnUnloadGuard = true;
+    window.addEventListener('beforeunload', function (e) {
+      if (window.__sfnInflight > 0) { e.preventDefault(); e.returnValue = ''; }
+    });
+  }
+  // 粘贴上传：Ctrl+V 直接进截图或复制的图片
+  document.addEventListener('paste', function (e) {
+    var fs = e.clipboardData && e.clipboardData.files;
+    if (!fs || !fs.length) return;
+    var imgs = Array.prototype.slice.call(fs).filter(function (f) { return /^image\\//.test(f.type); });
+    if (imgs.length) { e.preventDefault(); handleFiles(imgs); }
+  });
+  window.__sfnHandleFiles = handleFiles; // 供 e2e 与控制台复用
   [$('[data-field="observed_at"]')].forEach(function (el) {
     el.addEventListener('input', function () { el.dataset.touched = '1'; });
   });
@@ -1080,6 +1185,38 @@ const OBS_EDITOR_JS = `
   document.addEventListener('keydown', function (e) {
     if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') $('#btn-publish').click();
   });
+
+  // ---- 右栏（§8）：分节状态 ✓ + 平滑滚动 + Ctrl+S（此前误置于札记编辑器闭包，右栏 ✓ 从未生效） ----
+  var railNav = $('#rail-nav');
+  function updateRail() {
+    if (!railNav) return;
+    var done = {
+      photos: photos.length > 0,
+      time: !!$('[data-field="observed_at"]').value && !!latEl.value && !!lngEl.value,
+      id: !!window.__chosenSlug,
+      note: !!$('[data-field="field_note"]').value,
+    };
+    Array.prototype.slice.call(railNav.querySelectorAll('a')).forEach(function (a) {
+      a.classList.toggle('done', !!done[a.getAttribute('data-sec')]);
+    });
+  }
+  // 在既有 scheduleSave 之上挂一个轻量钩子：每次输入后刷新 ✓
+  $all('[data-field]').forEach(function (el) {
+    el.addEventListener('input', function () { setTimeout(updateRail, 0); });
+  });
+  if (railNav) {
+    railNav.addEventListener('click', function (e) {
+      var a = e.target.closest('a');
+      if (!a) return;
+      e.preventDefault();
+      var t = document.querySelector(a.getAttribute('href'));
+      if (t) t.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  }
+  document.addEventListener('keydown', function (e) {
+    if ((e.metaKey || e.ctrlKey) && e.key === 's') { e.preventDefault(); $('#btn-savedraft').click(); }
+  });
+  updateRail();
 })();
 `;
 
@@ -1387,38 +1524,6 @@ const NOTE_EDITOR_JS = `
     if (e.key === 'Escape') { document.body.classList.remove('drawer-open'); toggleMenu(false); }
     if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') $('#btn-publish-note').click();
   });
-
-  // ---- 右栏（§8）：分节状态 ✓ + 平滑滚动 + Ctrl+S ----
-  var railNav = $('#rail-nav');
-  function updateRail() {
-    if (!railNav) return;
-    var done = {
-      photos: photos.length > 0,
-      time: !!$('[data-field="observed_at"]').value && !!latEl.value && !!lngEl.value,
-      id: !!window.__chosenSlug,
-      note: !!$('[data-field="field_note"]').value,
-    };
-    Array.prototype.slice.call(railNav.querySelectorAll('a')).forEach(function (a) {
-      a.classList.toggle('done', !!done[a.getAttribute('data-sec')]);
-    });
-  }
-  // 在既有 scheduleSave 之上挂一个轻量钩子：每次输入后刷新 ✓
-  $all('[data-field]').forEach(function (el) {
-    el.addEventListener('input', function () { setTimeout(updateRail, 0); });
-  });
-  if (railNav) {
-    railNav.addEventListener('click', function (e) {
-      var a = e.target.closest('a');
-      if (!a) return;
-      e.preventDefault();
-      var t = document.querySelector(a.getAttribute('href'));
-      if (t) t.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    });
-  }
-  document.addEventListener('keydown', function (e) {
-    if ((e.metaKey || e.ctrlKey) && e.key === 's') { e.preventDefault(); $('#btn-savedraft').click(); }
-  });
-  updateRail();
 
   // ---- 发布 ----
   $('#btn-publish-note').addEventListener('click', function () {
