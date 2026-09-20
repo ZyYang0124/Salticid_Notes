@@ -61,5 +61,26 @@
     "field_note": "",
     "status": "published",
     "visibility": "public"
+  },
+  {
+    "id": "studio-31",
+    "public_id": "SFN-2026-000040",
+    "place_id": "place-28",
+    "created_by": "prof-zhiyong",
+    "observer": "prof-zhiyong",
+    "observed_at": "2026-05-06",
+    "observed_at_precision": "day",
+    "location_id": "loc-studio-31",
+    "sex": "male",
+    "life_stage": "adult",
+    "count": 1,
+    "habitat": null,
+    "microhabitat": "栏杆",
+    "behavior": null,
+    "plant": null,
+    "weather": "晴",
+    "field_note": "发现于公路边的栏杆上。蚁巢附近数量尤其多。",
+    "status": "published",
+    "visibility": "public"
   }
 ]

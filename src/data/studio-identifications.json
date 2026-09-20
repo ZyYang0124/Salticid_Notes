@@ -34,5 +34,17 @@
     "evidence": "field",
     "remarks": null,
     "is_current": true
+  },
+  {
+    "id": "studio-76",
+    "observation_id": "studio-31",
+    "taxon_id": "tax-wt-siler-zhangae",
+    "display_identification": "Siler zhangae",
+    "identified_by_profile_id": null,
+    "identified_by_text": "咩咩",
+    "identified_at": "2026-09-20",
+    "evidence": "field",
+    "remarks": null,
+    "is_current": true
   }
 ]

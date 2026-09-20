@@ -20,5 +20,16 @@
     "status": "working",
     "slug": "myrmaplata-plataleoides",
     "personal_note": null
+  },
+  {
+    "id": "tax-wt-siler-zhangae",
+    "rank": "species",
+    "scientific_name": "Siler zhangae",
+    "authorship": null,
+    "chinese_name": "张氏翠蛛",
+    "parent_id": null,
+    "status": "working",
+    "slug": "siler-zhangae",
+    "personal_note": null
   }
 ]

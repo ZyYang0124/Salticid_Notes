@@ -34,5 +34,17 @@
     "latitude": 23.052691,
     "longitude": 113.387769,
     "elevation_m": null
+  },
+  {
+    "id": "loc-studio-31",
+    "country_code": "",
+    "country_name": "中国",
+    "admin1": "云南省",
+    "admin2": "澜沧拉祜族自治县",
+    "locality": "东角公路",
+    "site_name": null,
+    "latitude": 22.392574,
+    "longitude": 99.933593,
+    "elevation_m": null
   }
 ]
