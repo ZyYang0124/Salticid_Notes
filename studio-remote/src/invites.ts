@@ -21,12 +21,20 @@ export function invitePage(
     </form>
   </div>
   <h2>已邀请（${rows.length}）</h2>
-  <table><tr><th>名字</th><th>邮箱</th><th>邀请码</th><th>状态</th></tr>
+  <table><tr><th>名字</th><th>邮箱</th><th>邀请码</th><th>状态</th><th>操作</th></tr>
     ${rows
-      .map(
-        (r) =>
-          `<tr><td>${esc(r.label ?? '—')}</td><td>${esc(r.email ?? '未登记')}</td><td><code>${esc(r.code)}</code></td><td>${r.claimed_by ? '已加入 ✓' : '待登录'}</td></tr>`,
-      )
+      .map((r) => {
+        const owner = r.email && r.email.toLowerCase() === 'yangzy0124@gmail.com';
+        const confirmMsg = r.claimed_by
+          ? `确定剔除「${r.label || r.email}」？
+其将立即退出且无法再登录（已发布内容保留）。`
+          : `确定撤销「${r.label || r.email}」的邀请？`;
+        return `<tr><td>${esc(r.label ?? '—')}</td><td>${esc(r.email ?? '未登记')}</td><td><code>${esc(r.code)}</code></td><td>${r.claimed_by ? '已加入 ✓' : '待登录'}</td><td>${
+          owner
+            ? '<span class="hint">站长</span>'
+            : `<form method="post" action="/studio/invite/remove" onsubmit="return confirm('${esc(confirmMsg)}')" style="margin:0"><input type="hidden" name="code" value="${esc(r.code)}" /><button type="submit" class="danger">剔除</button></form>`
+        }</td></tr>`;
+      })
       .join('')}
     ${rows.length === 0 ? '<tr><td>还没有邀请记录。</td></tr>' : ''}
   </table>`;

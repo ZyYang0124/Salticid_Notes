@@ -1433,6 +1433,34 @@ app.post('/studio/invite', async (c) => {
   return c.redirect('/studio/invite?ok=1');
 });
 
+// 剔除邀请：待登录 → 撤销邀请；已加入 → 删会话立即踢出并禁止再登录（已发布内容与署名保留）
+app.post('/studio/invite/remove', async (c) => {
+  const u = user(c);
+  if (u.role !== 'owner') return c.text('只有站长可以管理邀请。', 403);
+  if (!sameOrigin(c.req.raw)) return c.text('Forbidden', 403);
+  const form = await c.req.parseBody();
+  const code = String((form as any).code ?? '');
+  const fail = async (msg: string) => {
+    const rows = await all<any>(c.env.DB, 'SELECT code, label, email, claimed_by FROM invitations ORDER BY id DESC');
+    return c.html(page('邀请伙伴', invitePage(rows, msg), u));
+  };
+  const row = await get<any>(c.env.DB, 'SELECT * FROM invitations WHERE code = ?', code);
+  if (!row) return await fail('邀请记录不存在。');
+  const ownerEmail = (c.env.OWNER_EMAIL ?? '').toLowerCase();
+  if (row.email && row.email.toLowerCase() === ownerEmail) return await fail('不能剔除站长账号。');
+  if (row.claimed_by === u.id) return await fail('不能剔除当前登录的账号。');
+  if (row.claimed_by != null) {
+    // 立即踢出该伙伴的全部会话；账号与已发布内容保留（署名是历史的一部分）
+    await run(c.env.DB, 'DELETE FROM sessions WHERE user_id = ?', row.claimed_by);
+  }
+  await run(c.env.DB, 'DELETE FROM invitations WHERE code = ?', code);
+  await audit(c.env, u.display_name, 'invite', code, 'invite.removed', {
+    email: row.email ?? null,
+    claimed: row.claimed_by != null,
+  });
+  return c.redirect('/studio/invite?ok=' + encodeURIComponent('已剔除 ' + (row.label || row.email || code)));
+});
+
 // ---------- 导出（zip：JSON + 新增原图） ----------
 
 // 手动同步：把当前已发布内容整体提交到仓库并触发公开站构建（发布时自动做过，失败可在此重试）

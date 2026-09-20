@@ -542,6 +542,8 @@ details.more .grid { display:grid; grid-template-columns:1fr 1fr 1fr; gap:0 22px
   .rail-nav a:hover { color:var(--ink); background:var(--paper-soft); }
   .rail-nav a i { font-style:normal; color:var(--terra); font-weight:700; visibility:hidden; }
   .rail-nav a.done i { visibility:visible; }
+button.danger { background:#fff; border:1px solid #d8a79a; color:var(--terra); border-radius:8px; padding:4px 12px; font:inherit; font-size:12.5px; cursor:pointer; }
+button.danger:hover { background:var(--terra); color:#fff; }
 }
 @media (max-width:1099px) { .ed-rail { display:none; } }
 /* ---- 发布按钮：唯一红色 CTA（§47） ---- */
