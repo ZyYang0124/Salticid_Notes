@@ -628,7 +628,10 @@ const OBS_EDITOR_JS = `
   }
   function fillPlaceFields(p) {
     if (!p) return;
-    var set = function (k, v) { var el = document.querySelector('[data-field="' + k + '"]'); if (el && v != null) el.value = v; };
+    var set = function (k, v) {
+      var el = document.querySelector('[data-field="' + k + '"]');
+      if (el && v != null) { el.value = v; el.dataset.autofilled = '1'; }
+    };
     set('country_name', p.country);
     set('admin1', p.admin1); set('admin2', p.admin2);
     set('locality', p.locality); set('site_name', p.site_name);
@@ -775,26 +778,36 @@ const OBS_EDITOR_JS = `
       Promise.all([tdt, nom]).then(function (rs) {
         var j = rs[0] || rs[1];
         if (!j) { if (hint) hint.textContent = '未能识别地址——可手动填写'; return; }
-          // 只填空字段：手工填过的内容绝不覆盖（与 EXIF 坐标同一策略）
-          var picks = [
-            ['country_name', j.country],
-            ['admin1', j.admin1],
-            ['admin2', j.admin2],
-            ['locality', j.locality],
-          ];
-          var filled = [];
-          picks.forEach(function (kv) {
-            if (!kv[1]) return;
-            var el = document.querySelector('[data-field="' + kv[0] + '"]');
-            if (el && !el.value) { el.value = kv[1]; filled.push(kv[1]); }
-          });
-          if (filled.length) {
-            scheduleSave();
-            if (hint) hint.textContent = '已按坐标填入：' + filled.join(' · ') + '（仅空缺字段，可修改）';
-          } else if (hint) {
-            hint.textContent = '已识别：' + (j.formatted || '该位置') + '（地点信息已填写，未改动）';
+        // 地图选点是明确意图：之前由选点/地点搜索自动填的字段跟随新坐标更新；
+        // 用户亲手敲的字（input 后清除 autofilled 标记）绝不覆盖
+        var picks = [
+          ['country_name', j.country],
+          ['admin1', j.admin1],
+          ['admin2', j.admin2],
+          ['locality', j.locality],
+        ];
+        var updated = [], kept = [];
+        picks.forEach(function (kv) {
+          if (!kv[1]) return;
+          var el = document.querySelector('[data-field="' + kv[0] + '"]');
+          if (!el) return;
+          if (!el.value) {
+            el.value = kv[1];
+            el.dataset.autofilled = '1';
+            updated.push(kv[1]);
+          } else if (el.dataset.autofilled === '1') {
+            if (el.value !== kv[1]) { el.value = kv[1]; updated.push(kv[1]); }
+          } else {
+            kept.push(kv[0]);
           }
-        })
+        });
+        if (updated.length) {
+          scheduleSave();
+          if (hint) hint.textContent = '已更新地点：' + updated.join(' · ') + (kept.length ? '（' + kept.length + ' 项为手填，未覆盖）' : '');
+        } else if (hint) {
+          hint.textContent = '已识别：' + (j.formatted || '该位置') + '（地点未变动）';
+        }
+      })
         .catch(function () { if (hint) hint.textContent = '地址识别失败（网络）——可手动填写'; });
     }, 700); // 防抖：拖动/连续点击时只在停下后请求一次
   }
@@ -1173,6 +1186,12 @@ const OBS_EDITOR_JS = `
       showPhotoErr(e && e.message ? e.message : '上传未能开始，请重试');
     });
   }
+  // 地点字段手输后清除自动填充标记（此后地图选点不覆盖该字段）
+  ['country_name', 'admin1', 'admin2', 'locality', 'site_name'].forEach(function (k) {
+    var el = document.querySelector('[data-field="' + k + '"]');
+    if (el) el.addEventListener('input', function () { delete el.dataset.autofilled; });
+  });
+
   // 离开保护：有照片在上传时，关页 / 跳页先确认
   if (!window.__sfnUnloadGuard) {
     window.__sfnUnloadGuard = true;
