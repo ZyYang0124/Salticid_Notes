@@ -819,9 +819,29 @@ const OBS_EDITOR_JS = `
       mapObj = L.map('map-inner', { zoomControl: false }).setView([lat, lng], latEl.value ? 13 : 4);
       var TDT = boot.tiandituKey || '';
       if (TDT) {
-        // 天地图（CGCS2000 ≈ WGS84，无偏移，国内官方服务）：底图 + 中文注记
-        L.tileLayer('https://t{s}.tianditu.gov.cn/DataServer?T=vec_w&x={x}&y={y}&l={z}&tk=' + TDT, { subdomains: '01234567', attribution: '© 天地图', maxZoom: 18 }).addTo(mapObj);
-        L.tileLayer('https://t{s}.tianditu.gov.cn/DataServer?T=cva_w&x={x}&y={y}&l={z}&tk=' + TDT, { subdomains: '01234567', maxZoom: 18 }).addTo(mapObj);
+        // 天地图（CGCS2000 ≈ WGS84，无偏移，国内官方服务）：
+        // 卫星影像(img_w) + 行政底图(vec_w)，共用中文注记(cva_w)；右上角可切换
+        var sub = { subdomains: '01234567', maxZoom: 18 };
+        var baseSat = L.tileLayer('https://t{s}.tianditu.gov.cn/DataServer?T=img_w&x={x}&y={y}&l={z}&tk=' + TDT, Object.assign({ attribution: '© 天地图' }, sub));
+        var baseVec = L.tileLayer('https://t{s}.tianditu.gov.cn/DataServer?T=vec_w&x={x}&y={y}&l={z}&tk=' + TDT, Object.assign({}, sub));
+        baseSat.addTo(mapObj);
+        L.tileLayer('https://t{s}.tianditu.gov.cn/DataServer?T=cva_w&x={x}&y={y}&l={z}&tk=' + TDT, Object.assign({}, sub)).addTo(mapObj);
+        var ctl = document.createElement('div');
+        ctl.className = 'map-switch';
+        ctl.innerHTML = '<button type="button" class="on" data-basemap="sat">卫星</button><button type="button" data-basemap="vec">地图</button>';
+        mapObj.getContainer().appendChild(ctl);
+        ctl.addEventListener('click', function (e) {
+          var b = e.target.closest('button');
+          if (!b) return;
+          var sat = b.getAttribute('data-basemap') === 'sat';
+          if (sat && mapObj.hasLayer(baseVec)) mapObj.removeLayer(baseVec);
+          if (!sat && !mapObj.hasLayer(baseVec)) baseVec.addTo(mapObj);
+          if (!sat && mapObj.hasLayer(baseSat)) mapObj.removeLayer(baseSat);
+          if (sat && !mapObj.hasLayer(baseSat)) baseSat.addTo(mapObj);
+          Array.prototype.slice.call(ctl.querySelectorAll('button')).forEach(function (x) {
+            x.classList.toggle('on', x === b);
+          });
+        });
       } else {
         L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap' }).addTo(mapObj);
       }

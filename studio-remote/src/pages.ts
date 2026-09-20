@@ -351,7 +351,14 @@ button.act-btn { cursor:pointer; }
 .coords-row .coord em { font-style:normal; color:var(--faint); font-size:13px; }
 #map-box { margin-top:12px; border-radius:12px; overflow:hidden; border:1px solid var(--line); }
 #map-box .map-inner { height:320px; }
-#map-box .map-hint { font-size:12px; color:var(--faint); padding:8px 12px; background:#fbfaf7; border-top:1px solid var(--line-soft); }
+#map-box .map-switch { position:absolute; top:8px; right:8px; z-index:500; display:flex; border-radius:8px; overflow:hidden; border:1px solid rgba(38,34,28,.25); }
+.map-switch button {
+  font:inherit; font-size:12px; padding:4px 12px; border:none; cursor:pointer;
+  background:rgba(255,255,255,.88); color:var(--ink);
+}
+.map-switch button.on { background:var(--ink); color:var(--paper); }
+.map-inner { position:relative; }
+.map-hint { font-size:12px; color:var(--faint); padding:8px 12px; background:#fbfaf7; border-top:1px solid var(--line-soft); }
 #map-box.loading { display:flex; align-items:center; justify-content:center; height:200px; color:var(--faint); font-size:13.5px; }
 
 /* 详细信息折叠 */
