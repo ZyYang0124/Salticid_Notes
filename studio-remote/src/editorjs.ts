@@ -745,11 +745,36 @@ const OBS_EDITOR_JS = `
     geoTimer = setTimeout(function () {
       var hint = document.querySelector('#map-box .map-hint');
       if (hint) hint.textContent = '正在识别地址…';
-      // 服务端代理：天地图优先（国内可达），Nominatim 兜底（海外），密钥不出服务端
-      window.__sfnFetch('/studio/api/regeo?lat=' + lat + '&lng=' + lng, {}, 15000)
+      // 天地图（浏览器端密钥，浏览器直调才会通过校验）→ 服务端 Nominatim 代理兜底（海外）
+      var tk = boot.tiandituKey || '';
+      var tdt = tk
+        ? window.__sfnFetch(
+            'https://api.tianditu.gov.cn/geocoder?postStr=' + encodeURIComponent(JSON.stringify({ lon: lng, lat: lat, ver: 1 })) + '&type=geocode&tk=' + tk,
+            {}, 12000)
+            .then(function (r) { return r.ok ? r.json() : null; })
+            .then(function (j) {
+              if (!j || !j.result || !j.result.addressComponent) return null;
+              var ac = j.result.addressComponent;
+              return {
+                formatted: j.result.formatted_address || '',
+                country: '中国',
+                admin1: ac.province || '',
+                admin2: ac.county || ac.city || '',
+                locality: ac.road || ac.township || ac.county || '',
+              };
+            })
+            .catch(function () { return null; })
+        : Promise.resolve(null);
+      var nom = window.__sfnFetch('/studio/api/regeo?lat=' + lat + '&lng=' + lng, {}, 15000)
         .then(function (r) { return r.ok ? r.json() : null; })
         .then(function (j) {
-          if (!j || !j.ok) { if (hint) hint.textContent = '未能识别地址——可手动填写'; return; }
+          if (!j || !j.ok) return null;
+          return { formatted: j.formatted || '', country: j.country || '', admin1: j.admin1 || '', admin2: j.admin2 || '', locality: j.locality || '' };
+        })
+        .catch(function () { return null; });
+      Promise.all([tdt, nom]).then(function (rs) {
+        var j = rs[0] || rs[1];
+        if (!j) { if (hint) hint.textContent = '未能识别地址——可手动填写'; return; }
           // 只填空字段：手工填过的内容绝不覆盖（与 EXIF 坐标同一策略）
           var picks = [
             ['country_name', j.country],

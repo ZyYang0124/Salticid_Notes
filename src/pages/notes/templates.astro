@@ -1,0 +1,74 @@
+---
+export const prerender = true;
+import Base from '../../layouts/Base.astro';
+import { NOTE_TEMPLATES } from '../../lib/noteTemplates';
+import { withBase } from '../../lib/privacy';
+
+// 模板展示页：同一篇示例札记以十种版式各渲染一遍（纯静态演示，非真实札记，不进 RSS/搜索索引主列表）。
+const SAMPLE_HERO = {
+  kicker: '札 记 · 模 板 预 览',
+  title: '雨后竹林的三十秒',
+  dek: '同一篇笔记，十种版式——挑一个配得上那次相遇的。',
+  meta: '2026 年 9 月 19 日 · 咩咩',
+};
+const SAMPLE_BODY = `
+<p>雨刚停，竹叶还在滴水。我沿着石阶往下走，一低头——一只蚁蛛正停在栏杆的横截面上，腹部翘得老高，活脱脱一小截会跑的枯枝。我们互相打量了三十秒：它用八只眼睛，我用两只。</p>
+<blockquote>跳蛛的可怕之处从来不是毒液，而是它们看你的方式——像在计算你下一步往哪踩。</blockquote>
+<h2>一次经典的高估自己</h2>
+<p>它先退了两步，随即掉头，用三次短促的跳跃挪了半米，落点精准得像量过。蚁蛛模仿蚂蚁的体态是防御，但这一套「先退后跳」的动作，是猎手才有的从容。</p>
+<h3>坐标之外</h3>
+<p>后来我又回到那根栏杆三次，再没见过它。观察记录里写着精确坐标，但坐标只记得位置，不记得那三十秒。</p>
+`;
+const SAMPLE_HTML = `
+<h2>一次经典的高估自己</h2>
+<p>它先退了两步，随即掉头，用三次短促的跳跃挪了半米，落点精准得像量过。蚁蛛模仿蚂蚁的体态是防御，但这一套「先退后跳」的动作，是猎手才有的从容。</p>
+<blockquote>跳蛛的可怕之处从来不是毒液，而是它们看你的方式——像在计算你下一步往哪踩。</blockquote>
+<h3>坐标之外</h3>
+<p>后来我又回到那根栏杆三次，再没见过它。观察记录里写着精确坐标，但坐标只记得位置，不记得那三十秒。</p>
+`;
+---
+<Base title="札记模板预览" description="十种札记版式：同一篇笔记的不同呈现。">
+  <div class="container-wide">
+    <div class="page-title">
+      <h1>札记模板预览</h1>
+      <p class="lede">同一篇示例笔记，十种版式各渲染一遍。写作时在 Studio 札记编辑器顶部选择，随时可换。</p>
+      <p class="lede" style="margin-top:6px;"><a class="tpl-back" href={withBase('/studio/notes/new')} target="_blank" rel="noopener">去写一篇 →</a></p>
+    </div>
+    {NOTE_TEMPLATES.map((t, i) => (
+      <section class="tpl-demo">
+        <div class="tpl-demo-head">
+          <span class="tpl-no">{String(i + 1).padStart(2, '0')}</span>
+          <span class="tpl-name">{t.name}</span>
+          <span class="tpl-desc">{t.desc}</span>
+          <span class="tpl-id">.tpl-{t.id}</span>
+        </div>
+        <article class={`story tpl-${t.id} tpl-demo-story`}>
+          <header class="story-hero">
+            <div class="hero-kicker">{SAMPLE_HERO.kicker}</div>
+            <h1 class="hero-title">{SAMPLE_HERO.title}</h1>
+            <p class="hero-dek">{SAMPLE_HERO.dek}</p>
+            <div class="hero-meta">
+              <span>{SAMPLE_HERO.meta}</span>
+            </div>
+          </header>
+          <div class="story-body post-body" set:html={SAMPLE_BODY} />
+        </article>
+      </section>
+    ))}
+  </div>
+</Base>
+
+<style>
+  .tpl-demo { margin: 0 0 64px; }
+  .tpl-demo-head {
+    display: flex; align-items: baseline; gap: 14px;
+    border-top: 1px solid var(--line); padding: 18px 2px 14px;
+  }
+  .tpl-no { font-size: 12px; color: var(--faint); letter-spacing: 0.14em; }
+  .tpl-name { font-family: var(--serif); font-size: 20px; }
+  .tpl-desc { font-size: 13px; color: var(--muted); }
+  .tpl-id { margin-left: auto; font-size: 11.5px; color: var(--faint); font-family: var(--sans); }
+  .tpl-demo-story { border: 1px solid var(--line-soft); border-radius: 4px; padding: clamp(20px, 3vw, 40px); overflow: hidden; }
+  .tpl-back { text-decoration: underline; text-decoration-color: var(--line); text-underline-offset: 3px; }
+  .tpl-back:hover { color: var(--terra); }
+</style>

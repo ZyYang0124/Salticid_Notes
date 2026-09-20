@@ -1179,37 +1179,12 @@ app.post('/studio/api/exif-preview', async (c) => {
   return c.json({ results: [{ filename: file.name, date: s.date ?? null, datetime: s.datetime ?? null, gps: s.gps ?? null, camera: s.camera ?? null }] });
 });
 
-// 逆地理：坐标 → 行政区划（只填空缺字段用）。天地图优先（国内可达），Nominatim 兜底（海外/未配置密钥）
+// 逆地理兜底：Nominatim（海外坐标/未配天地图时）。天地图走浏览器端直调（浏览器型密钥）。
 app.get('/studio/api/regeo', async (c) => {
   user(c);
   const lat = parseFloat(c.req.query('lat') || '');
   const lng = parseFloat(c.req.query('lng') || '');
   if (!Number.isFinite(lat) || !Number.isFinite(lng)) return c.json({ error: 'bad coords' }, 400);
-  const tk = c.env.TIANDITU_KEY;
-  if (tk) {
-    try {
-      const r = await fetch(
-        'https://api.tianditu.gov.cn/geocoder?postStr=' + encodeURIComponent(JSON.stringify({ lon: lng, lat: lat, ver: 1 })) + '&type=geocode&tk=' + tk,
-        { signal: AbortSignal.timeout(8000) } as any,
-      );
-      if (r.ok) {
-        const j = (await r.json()) as any;
-        const res = j?.result;
-        const ac = res?.addressComponent;
-        // 海外坐标天地图通常给不出省级区划 → 落到 Nominatim
-        if (res && (ac?.province || ac?.county)) {
-          return c.json({
-            ok: true, source: 'tianditu',
-            formatted: res.formatted_address || '',
-            country: '中国',
-            admin1: ac.province || '',
-            admin2: ac.county || ac.city || '',
-            locality: ac.road || ac.township || ac.county || '',
-          });
-        }
-      }
-    } catch { /* 落到兜底 */ }
-  }
   try {
     const r = await fetch(
       'https://nominatim.openstreetmap.org/reverse?format=jsonv2&zoom=10&addressdetails=1&accept-language=zh-CN&lat=' + lat + '&lon=' + lng,
@@ -1229,7 +1204,7 @@ app.get('/studio/api/regeo', async (c) => {
         });
       }
     }
-  } catch { /* 双双失败 → 502 */ }
+  } catch { /* 失败 → 502 */ }
   return c.json({ ok: false, error: 'unavailable' }, 502);
 });
 
