@@ -484,6 +484,12 @@ details.more .grid { display:grid; grid-template-columns:1fr 1fr 1fr; gap:0 22px
 .tpl-opt:hover { border-color:var(--faint); }
 .tpl-opt.on { border-color:var(--terra); box-shadow:0 0 0 1px var(--terra) inset; }
 .tpl-opt.on b { color:var(--terra); }
+.tpl-preview-link {
+  flex:0 0 auto; align-self:stretch; display:flex; align-items:center;
+  font-size:12px; color:var(--faint); text-decoration:underline; text-underline-offset:3px;
+  padding:0 6px;
+}
+.tpl-preview-link:hover { color:var(--terra); }
 
 /* 预览面板的模板特征（简化版，正式版式以主站为准） */
 #pane-preview.tpl-folio .pv-body { columns:2; column-gap:32px; }
@@ -1320,6 +1326,7 @@ export function noteEditorHtml(slug: string | null, data: Record<string, any>): 
       </div>
       <div class="tpl-picker" id="tpl-picker" role="radiogroup" aria-label="版式模板">
         ${NOTE_TEMPLATES.map((t) => `<button type="button" class="tpl-opt${(data.template ?? 'classic') === t.id ? ' on' : ''}" data-tpl="${t.id}" title="${t.desc}"><b>${t.name}</b><span>${t.desc}</span></button>`).join('')}
+        <a class="tpl-preview-link" href="${SITE_URL}/notes/templates/" target="_blank" rel="noopener" title="公开站模板预览页（新窗口）">预览模板 ↗</a>
       </div>
       <input id="n-title" class="title-line" placeholder="标题" value="${esc(data.title ?? '')}" autocomplete="off" />
       <input id="n-subtitle" class="subtitle-line" placeholder="副标题（可选）" value="${esc(data.subtitle ?? '')}" autocomplete="off" />
