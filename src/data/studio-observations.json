@@ -42,27 +42,6 @@
     "visibility": "public"
   },
   {
-    "id": "studio-25",
-    "public_id": "SFN-2026-000034",
-    "place_id": "place-21",
-    "created_by": "prof-hamu",
-    "observer": "prof-hamu",
-    "observed_at": "2026-09-17",
-    "observed_at_precision": "day",
-    "location_id": "loc-studio-25",
-    "sex": "unknown",
-    "life_stage": "unknown",
-    "count": null,
-    "habitat": null,
-    "microhabitat": null,
-    "behavior": null,
-    "plant": null,
-    "weather": null,
-    "field_note": "",
-    "status": "published",
-    "visibility": "public"
-  },
-  {
     "id": "studio-31",
     "public_id": "SFN-2026-000040",
     "place_id": "place-28",
