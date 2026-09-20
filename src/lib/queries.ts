@@ -222,6 +222,9 @@ export interface LocalityCard {
   count: number;
   habitats: string[];
   cover: { thumb: string; medium: string; large: string; view_type: string } | null;
+  /** 代表坐标（首个有坐标的观察，WGS84）；地图模块用 */
+  latitude: number | null;
+  longitude: number | null;
   /** 对应的地点实体（存在时卡片链接到 /places/[id]/） */
   place_id: string | null;
 }
@@ -235,12 +238,12 @@ export function observationPlaceId(o: PublicObservation): string | null {
  *  例：offset=1 时物种卡显示第 2 角度，避免与「最近的相遇」同图。 */
 export function observationCoverAt(o: PublicObservation, offset: number): PublicMedia | null {
   const media = o.media ?? [];
-  if (!media.length) return o.cover ?? null;
-  if (!o.cover) return media[0] ?? null;
-  const ci = media.findIndex((m) => m.id === o.cover.id);
-  if (ci < 0 || media.length === 1) return o.cover;
+  const cover = o.cover;
+  if (!media.length || !cover) return cover ?? media[0] ?? null;
+  const ci = media.findIndex((m) => m.id === cover.id);
+  if (ci < 0 || media.length === 1) return cover;
   const shift = ((offset % media.length) + media.length) % media.length;
-  return media[(ci + shift) % media.length] ?? o.cover;
+  return media[(ci + shift) % media.length] ?? cover;
 }
 
 /** 鉴定类群 slug → 物种中文名（无中文名或未知类群返回 null），供各页面在学名旁展示 */
@@ -266,6 +269,8 @@ export function getLocalityCards(): LocalityCard[] {
         count: 0,
         habitats: [],
         cover: null,
+        latitude: loc.latitude,
+        longitude: loc.longitude,
         place_id: null,
       };
       byLocality.set(key, card);
@@ -278,6 +283,7 @@ export function getLocalityCards(): LocalityCard[] {
     // 「其他」层级避开封面位——该观察有多角度时，地点卡不再与「最近的相遇」同图
     const rank = (v: string) => (v === 'habitat' ? 2 : v === 'behavior' ? 1 : 0);
     const ranked = o.media
+      .filter((m) => m && m.view_type)
       .map((m, i) => ({ m, i, r: rank(m.view_type) }))
       .sort((a, b) => b.r - a.r || a.i - b.i);
     let best = ranked[0];

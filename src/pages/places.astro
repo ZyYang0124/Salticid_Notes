@@ -5,6 +5,16 @@ import { getLocalityCards } from '../lib/queries';
 import { withBase } from '../lib/privacy';
 
 const cards = getLocalityCards();
+// 地图模块数据：有坐标的地点（坐标全量公开，§地点）
+const mapPoints = cards
+  .filter((c) => c.latitude != null && c.longitude != null)
+  .map((c) => ({
+    lat: c.latitude,
+    lng: c.longitude,
+    name: c.name,
+    count: c.count,
+    url: c.place_id ? withBase(`/places/${c.place_id}/`) : null,
+  }));
 // 全球地理：顶层按国家分组，其下按一级行政区（SOP §104）
 const byCountry = new Map<string, Map<string, typeof cards>>();
 for (const c of cards) {
@@ -25,6 +35,14 @@ for (const c of cards) {
       </p>
     </div>
 
+    {mapPoints.length > 0 && (
+      <div class="places-map-panel">
+        <div id="places-map" class="places-map" />
+        <script type="application/json" id="places-map-data" set:html={JSON.stringify(mapPoints)} />
+        <div class="places-map-legend">真实记录过的地点 · 点击标记查看 <span class="n">{mapPoints.length} 处</span></div>
+      </div>
+    )}
+
     <div class="place-groups">
       {[...byCountry.entries()].map(([country, byAdmin1]) => (
         <section class="place-group">
@@ -36,7 +54,7 @@ for (const c of cards) {
             {list.map((c) => (
               c.place_id ? (
                 <a class="place-card" href={withBase(`/places/${c.place_id}/`)}>
-                  <div class="frame">{c.cover && <img src={c.cover.medium} alt={c.name} loading="lazy"  decoding="async" />}</div>
+                  <div class="frame">{c.cover && <img src={c.cover.medium} alt={c.name} loading="lazy" />}</div>
                   <div class="name">{c.name}</div>
                   <div class="meta">
                     {c.admin1}
@@ -47,7 +65,7 @@ for (const c of cards) {
                 </a>
               ) : (
                 <div class="place-card">
-                  <div class="frame">{c.cover && <img src={c.cover.medium} alt={c.name} loading="lazy"  decoding="async" />}</div>
+                  <div class="frame">{c.cover && <img src={c.cover.medium} alt={c.name} loading="lazy" />}</div>
                   <div class="name">{c.name}</div>
                   <div class="meta">
                     {c.admin1}
@@ -68,4 +86,90 @@ for (const c of cards) {
       </p>
     </div>
   </div>
+
+  <link rel="stylesheet" href={withBase('/vendor/leaflet.css')} />
+  <script is:inline src={withBase('/vendor/leaflet.js')}></script>
+  <script is:inline>
+    (function () {
+      function init() {
+        var el = document.getElementById('places-map');
+        var dataEl = document.getElementById('places-map-data');
+        if (!el || !dataEl || el.dataset.inited === '1') return;
+        if (typeof L === 'undefined') return;
+        el.dataset.inited = '1';
+        var pts = JSON.parse(dataEl.textContent || '[]');
+        var map = L.map(el, { zoomControl: false, scrollWheelZoom: false, attributionControl: true });
+        // Esri 浅灰底图 + 注记层：免密钥、国内可达、气质贴合站点纸感
+        L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}', { maxZoom: 16, attribution: '© Esri · © OpenStreetMap contributors' }).addTo(map);
+        L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Reference/MapServer/tile/{z}/{y}/{x}', { maxZoom: 16 }).addTo(map);
+        var bounds = [];
+        pts.forEach(function (p) {
+          var icon = L.divIcon({ className: 'pl-pin', html: '<span class="pl-dot"></span>', iconSize: [18, 18], iconAnchor: [9, 9] });
+          var m = L.marker([p.lat, p.lng], { icon: icon, title: p.name }).addTo(map);
+          m.bindPopup(
+            '<b>' + p.name.replace(/&/g, '&amp;').replace(/</g, '&lt;') + '</b><br/>' + p.count + ' 次相遇' +
+            (p.url ? '<br/><a href="' + p.url + '">查看地点 →</a>' : '')
+          );
+          bounds.push([p.lat, p.lng]);
+        });
+        if (bounds.length === 1) map.setView(bounds[0], 12);
+        else map.fitBounds(bounds, { padding: [40, 40], maxZoom: 12 });
+        var zoom = document.createElement('div');
+        zoom.className = 'pl-zoom';
+        zoom.innerHTML = '<button type="button" aria-label="放大">＋</button><button type="button" aria-label="缩小">－</button>';
+        el.appendChild(zoom);
+        zoom.children[0].addEventListener('click', function () { map.zoomIn(); });
+        zoom.children[1].addEventListener('click', function () { map.zoomOut(); });
+      }
+      if (document.readyState !== 'loading') init();
+      else document.addEventListener('DOMContentLoaded', init);
+      document.addEventListener('astro:page-load', init);
+    })();
+  </script>
 </Base>
+
+<style>
+  .places-map-panel {
+    position: relative; margin: 0 0 46px;
+    border: 1px solid var(--line); border-radius: 6px; overflow: hidden;
+    background: var(--paper-deep);
+    box-shadow: 0 1px 0 rgba(38, 34, 28, 0.05);
+  }
+  .places-map { height: 430px; background: #dfe3df; }
+  .places-map-legend {
+    padding: 10px 14px; font-size: 12.5px; color: var(--faint); letter-spacing: 0.04em;
+    border-top: 1px solid var(--line-soft); background: var(--paper);
+  }
+  .places-map-legend .n { color: var(--terra); font-weight: 700; }
+  /* 标记/缩放/弹层均为运行时生成的节点 → 用 :global 作用（Astro scoped 样式不作用于动态元素） */
+  .places-map :global(.pl-pin) { background: none; border: none; }
+  .places-map :global(.pl-pin .pl-dot) {
+    display: block; width: 16px; height: 16px; margin: 1px; border-radius: 50%;
+    background: var(--terra); border: 3px solid #fff;
+    box-shadow: 0 1px 6px rgba(20, 17, 12, 0.45);
+    transition: transform 0.15s ease;
+  }
+  .places-map :global(.pl-pin:hover .pl-dot) { transform: scale(1.3); }
+  .places-map :global(.pl-zoom) {
+    position: absolute; top: 10px; right: 10px; z-index: 500;
+    display: flex; flex-direction: column;
+    border: 1px solid rgba(38, 34, 28, 0.25); border-radius: 8px; overflow: hidden;
+  }
+  .places-map :global(.pl-zoom button) {
+    width: 32px; height: 32px; font: inherit; font-size: 17px; line-height: 1;
+    border: none; cursor: pointer; background: rgba(255, 255, 255, 0.92); color: var(--ink);
+  }
+  .places-map :global(.pl-zoom button + button) { border-top: 1px solid rgba(38, 34, 28, 0.2); }
+  .places-map :global(.leaflet-popup-content-wrapper) { border-radius: 10px; box-shadow: 0 10px 28px rgba(38, 34, 28, 0.18); }
+  .places-map :global(.leaflet-popup-content) { margin: 10px 14px; font-family: var(--sans); font-size: 13px; line-height: 1.7; }
+  .places-map :global(.leaflet-popup-content b) { font-family: var(--serif); font-size: 14.5px; }
+  .places-map :global(.leaflet-popup-content a) { color: var(--terra); }
+  .places-map :global(.leaflet-container) { font-family: var(--sans); background: #dfe3df; }
+  /* 暗色主题：瓦片做柔和反色，标记不受影响 */
+  :global([data-theme='dark'] .places-map .leaflet-tile) {
+    filter: brightness(0.72) invert(1) contrast(1.08) hue-rotate(185deg) saturate(0.35);
+  }
+  @media (max-width: 720px) {
+    .places-map { height: 320px; }
+  }
+</style>
