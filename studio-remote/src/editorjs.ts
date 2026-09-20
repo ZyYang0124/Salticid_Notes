@@ -739,6 +739,16 @@ const OBS_EDITOR_JS = `
       if (tryParsePair(text)) e.preventDefault();
     });
   });
+  // 手输经纬度：两侧都有效即识别地址（matchAddress 自带防抖），地图开着时同步移动标记
+  function regeoFromInputs() {
+    var la = parseFloat(latEl.value), ln = parseFloat(lngEl.value);
+    var valid = Number.isFinite(la) && Number.isFinite(ln) && Math.abs(la) <= 90 && Math.abs(ln) <= 180;
+    if (!valid) return;
+    if (mapObj && marker) marker.setLatLng([la, ln]);
+    matchAddress(la, ln);
+  }
+  latEl.addEventListener('input', regeoFromInputs);
+  lngEl.addEventListener('input', regeoFromInputs);
   var mapBox = $('#map-box'), mapLoaded = false, mapObj = null, marker = null;
 
   // ---- 地址逆匹配：选点后自动填写空缺的地点信息（OSM Nominatim；地图瓦片同为 OSM 服务） ----
