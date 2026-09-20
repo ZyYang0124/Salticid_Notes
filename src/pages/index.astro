@@ -4,7 +4,7 @@ import Base from '../layouts/Base.astro';
 import PictureImage from '../components/PictureImage.astro';
 import ObsCard from '../components/ObsCard.astro';
 import FieldPostcard from '../components/FieldPostcard.astro';
-import { allPublicObservations, getPublishedPosts, getLocalityCards, getSpeciesGroups, speciesSlug } from '../lib/queries';
+import { allPublicObservations, getPublishedPosts, getLocalityCards, getSpeciesGroups, speciesSlug, observationCoverAt } from '../lib/queries';
 import { withBase } from '../lib/privacy';
 import { siteConfig } from '../lib/store';
 import { sciNameHtml, formatDate, shortRegion } from '../lib/format';
@@ -182,12 +182,16 @@ const places = getLocalityCards().slice(0, 3);
       </div>
       <p class="section-lede">物种页由观察记录聚合而成——它们是相遇的积累，而不是名录的条目。</p>
       <div class="species-mini">
-        {species.map((g) => (
+        {species.map((g) => {
+          // 多栏目同源错开角度：物种卡用代表观察的下一角度（+1），避免与「最近的相遇」同图
+          const rep = g.observations.find((o) => o.cover);
+          const media = rep ? observationCoverAt(rep, 1) : null;
+          return (
           <a class="species-card" href={withBase(`/species/${speciesSlug(g)}/`)}>
             <div class="frame">
-              {g.observations.find((o) => o.cover) && (
+              {media && (
                 <PictureImage
-                  media={g.observations.find((o) => o.cover)!.cover!}
+                  media={media}
                   sizes="(max-width: 900px) 46vw, 24vw"
                   alt={`${g.display} 的代表照片`}
                 />
@@ -196,7 +200,8 @@ const places = getLocalityCards().slice(0, 3);
             <div class="name" set:html={sciNameHtml(g.display, g.rank)} />
             <div class="sub">{g.observations.length} 次相遇 · {g.regions.join('、')}</div>
           </a>
-        ))}
+          );
+        })}
       </div>
     </section>
 
@@ -210,7 +215,7 @@ const places = getLocalityCards().slice(0, 3);
       <div class="place-cards">
         {places.map((p) => (
           <a class="place-card" href={withBase('/places/')}>
-            <div class="frame">{p.cover && <img src={p.cover.medium} alt={p.name} loading="lazy"  decoding="async" />}</div>
+            <div class="frame">{p.cover && <img src={p.cover.medium} alt={p.name} loading="lazy" />}</div>
             <div class="name">{p.name}</div>
             <div class="meta">{p.country_name === '中国' ? p.admin1 : p.country_name + ' · ' + p.admin1} · {p.count} 次相遇{p.elevation != null ? ` · 海拔约 ${p.elevation} m` : ''}</div>
           </a>

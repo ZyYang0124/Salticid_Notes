@@ -231,6 +231,18 @@ export function observationPlaceId(o: PublicObservation): string | null {
   return o.place_id;
 }
 
+/** 首页多栏目同源防重复：同一观察按角度偏移取照（代表图为 0 号位，循环取）。
+ *  例：offset=1 时物种卡显示第 2 角度，避免与「最近的相遇」同图。 */
+export function observationCoverAt(o: PublicObservation, offset: number): PublicMedia | null {
+  const media = o.media ?? [];
+  if (!media.length) return o.cover ?? null;
+  if (!o.cover) return media[0] ?? null;
+  const ci = media.findIndex((m) => m.id === o.cover.id);
+  if (ci < 0 || media.length === 1) return o.cover;
+  const shift = ((offset % media.length) + media.length) % media.length;
+  return media[(ci + shift) % media.length] ?? o.cover;
+}
+
 /** 鉴定类群 slug → 物种中文名（无中文名或未知类群返回 null），供各页面在学名旁展示 */
 export function chineseNameOfSlug(slug: string | null | undefined): string | null {
   if (!slug) return null;
@@ -262,12 +274,18 @@ export function getLocalityCards(): LocalityCard[] {
     const pid = observationPlaceId(o);
     if (pid && !card.place_id) card.place_id = pid;
     if (o.habitat && !card.habitats.includes(o.habitat)) card.habitats.push(o.habitat);
-    // 封面层级（§110 修订）：遍历观察全部照片（生境照常非代表图），生境 > 行为 > 其他
-    for (const m of o.media) {
-      const rank = (v: string) => (v === 'habitat' ? 2 : v === 'behavior' ? 1 : 0);
-      if (!card.cover || rank(m.view_type) > rank(card.cover.view_type)) {
-        card.cover = { thumb: m.thumb, medium: m.medium, large: m.large, view_type: m.view_type };
-      }
+    // 封面层级（§110 修订）：遍历观察全部照片（生境照常非代表图），生境 > 行为 > 其他；
+    // 「其他」层级避开封面位——该观察有多角度时，地点卡不再与「最近的相遇」同图
+    const rank = (v: string) => (v === 'habitat' ? 2 : v === 'behavior' ? 1 : 0);
+    const ranked = o.media
+      .map((m, i) => ({ m, i, r: rank(m.view_type) }))
+      .sort((a, b) => b.r - a.r || a.i - b.i);
+    let best = ranked[0];
+    if (best && best.r === 0 && best.i === 0 && o.media.length > 1) {
+      best = ranked.find((r2) => r2.i !== 0) ?? best;
+    }
+    if (best && (!card.cover || rank(best.m.view_type) > rank(card.cover.view_type))) {
+      card.cover = { thumb: best.m.thumb, medium: best.m.medium, large: best.m.large, view_type: best.m.view_type };
     }
   }
   return [...byLocality.values()].sort((a, b) => b.count - a.count);
