@@ -736,7 +736,10 @@ const OBS_EDITOR_JS = `
   [latEl, lngEl].forEach(function (el) {
     el.addEventListener('paste', function (e) {
       var text = (e.clipboardData || window.clipboardData).getData('text') || '';
-      if (tryParsePair(text)) e.preventDefault();
+      if (tryParsePair(text)) {
+        e.preventDefault();
+        regeoFromInputs(); // 成对粘贴为程序赋值，不触发 input 事件，手动补一次识别
+      }
     });
   });
   // 手输经纬度：两侧都有效即识别地址（matchAddress 自带防抖），地图开着时同步移动标记
