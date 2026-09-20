@@ -845,7 +845,11 @@ const OBS_EDITOR_JS = `
       } else {
         L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap' }).addTo(mapObj);
       }
-      marker = L.marker([lat, lng], { draggable: true }).addTo(mapObj);
+      // 自托管 Leaflet 无默认图钉图片 → CSS 定位点（圆心即坐标，拖动此点）
+      marker = L.marker([lat, lng], {
+        draggable: true,
+        icon: L.divIcon({ className: 'map-pin', html: '<span class="pin-ring"></span><span class="pin-dot"></span>', iconSize: [22, 22], iconAnchor: [11, 11] }),
+      }).addTo(mapObj);
       function apply() {
         var p = marker.getLatLng();
         latEl.value = Math.round(p.lat * 1e6) / 1e6;

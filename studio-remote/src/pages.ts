@@ -358,6 +358,17 @@ button.act-btn { cursor:pointer; }
 }
 .map-switch button.on { background:var(--ink); color:var(--paper); }
 .map-inner { position:relative; }
+.map-pin { background:none; border:none; }
+.map-pin .pin-dot {
+  display:block; width:14px; height:14px; margin:4px; border-radius:50%;
+  background:var(--terra); border:3px solid #fff; box-shadow:0 1px 6px rgba(20,17,12,.55);
+}
+.map-pin .pin-ring {
+  position:absolute; inset:0; border-radius:50%;
+  border:2px solid rgba(181,64,44,.55); animation:pin-pulse 2.2s ease-out infinite;
+}
+@keyframes pin-pulse { 0% { transform:scale(.6); opacity:1; } 100% { transform:scale(1.5); opacity:0; } }
+@media (prefers-reduced-motion: reduce) { .map-pin .pin-ring { animation:none; opacity:.6; } }
 .map-hint { font-size:12px; color:var(--faint); padding:8px 12px; background:#fbfaf7; border-top:1px solid var(--line-soft); }
 #map-box.loading { display:flex; align-items:center; justify-content:center; height:200px; color:var(--faint); font-size:13.5px; }
 
