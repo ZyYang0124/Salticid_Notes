@@ -39,7 +39,7 @@ for (const c of cards) {
       <div class="places-map-panel">
         <div id="places-map" class="places-map" />
         <script type="application/json" id="places-map-data" set:html={JSON.stringify(mapPoints)} />
-        <div class="places-map-legend">分布 · 点击标记查看 <span class="n">{mapPoints.length} 处</span><span class="src">省界轮廓 DataV.GeoJSON</span></div>
+        <div class="places-map-legend">分布 · 点击标记查看 <span class="n">{mapPoints.length} 处</span><span class="src">轮廓 Natural Earth</span></div>
       </div>
     )}
 
@@ -102,13 +102,27 @@ for (const c of cards) {
           zoomControl: false, scrollWheelZoom: false,
           attributionControl: false, zoomSnap: 0.25,
         });
-        // 分布底图：中国省界淡暖描线（DataV.GeoJSON，懒加载）
-        fetch('/geo/china.json').then(function (r) { return r.json(); }).then(function (geo) {
+        // 分布底图：世界国界（Natural Earth 110m，公有领域；TopoJSON 懒加载 + 本地解析）
+        Promise.all([
+          fetch('/geo/world.json').then(function (r) { return r.json(); }),
+          fetch('/vendor/topojson-client.js').then(function (r) { return r.text(); }),
+        ]).then(function (rs) {
+          var topo = rs[0];
+          if (!window.topojson) {
+            var f = new Function(rs[1] + ';return topojson;');
+            window.topojson = f();
+          }
+          var geo = window.topojson.feature(topo, topo.objects.countries);
           var layer = L.geoJSON(geo, {
             interactive: false,
             style: { color: '#b9ac8f', weight: 1, opacity: 1, fillColor: '#f3eee2', fillOpacity: 1 },
           }).addTo(map);
           map.fitBounds(layer.getBounds(), { padding: [10, 10] });
+          // 观察点可能在陆地轮廓之外（小岛/近海）：并入视野
+          if (bounds.length) {
+            var pb = L.latLngBounds(bounds).pad(0.2);
+            map.fitBounds(layer.getBounds().extend(pb), { padding: [10, 10] });
+          }
         }).catch(function () {});
         var bounds = [];
         pts.forEach(function (p) {
