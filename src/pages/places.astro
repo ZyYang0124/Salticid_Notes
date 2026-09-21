@@ -102,12 +102,11 @@ for (const c of cards) {
           zoomControl: false, scrollWheelZoom: false,
           attributionControl: false, zoomSnap: 0.25,
         });
-        el.classList.add('places-map-dark');
         // 分布底图：中国省界淡暖描线（DataV.GeoJSON，懒加载）
         fetch('/geo/china.json').then(function (r) { return r.json(); }).then(function (geo) {
           var layer = L.geoJSON(geo, {
             interactive: false,
-            style: { color: '#4a4234', weight: 1, opacity: 0.9, fillColor: '#1d1a14', fillOpacity: 0.6 },
+            style: { color: '#b9ac8f', weight: 1, opacity: 1, fillColor: '#f3eee2', fillOpacity: 1 },
           }).addTo(map);
           map.fitBounds(layer.getBounds(), { padding: [10, 10] });
         }).catch(function () {});
@@ -145,43 +144,43 @@ for (const c of cards) {
 <style>
   .places-map-panel {
     position: relative; margin: 0 0 46px;
-    border: 1px solid #332d24; border-radius: 8px; overflow: hidden;
-    background: #14110c;
-    box-shadow: 0 2px 24px rgba(20, 17, 12, 0.35);
+    border: 1px solid var(--line); border-radius: 8px; overflow: hidden;
+    background: var(--paper);
+    box-shadow: 0 1px 0 rgba(38, 34, 28, 0.05);
   }
-  .places-map { height: 460px; background: #14110c; }
+  .places-map { height: 460px; background: #f2eee2; }
   .places-map-legend {
     display: flex; align-items: center; gap: 12px;
-    padding: 11px 16px; font-size: 12.5px; color: #b3a992; letter-spacing: 0.05em;
-    border-top: 1px solid #2c271e; background: #171310;
+    padding: 11px 16px; font-size: 12.5px; color: var(--muted); letter-spacing: 0.05em;
+    border-top: 1px solid var(--line-soft); background: var(--paper);
   }
-  .places-map-legend .n { color: #d96a45; font-weight: 700; }
-  .places-map-legend .src { margin-left: auto; font-size: 11px; color: #6f675c; }
-  /* 光点标记：陶土红 + 柔光晕（运行时节点 → :global） */
+  .places-map-legend .n { color: var(--terra); font-weight: 700; }
+  .places-map-legend .src { margin-left: auto; font-size: 11px; color: var(--faint); }
+  /* 光点标记：陶土红 + 柔和光晕（运行时节点 → :global） */
   .places-map :global(.pl-pin) { background: none; border: none; }
   .places-map :global(.pl-pin .pl-dot) {
     display: block; width: 12px; height: 12px; margin: 5px; border-radius: 50%;
-    background: #d96a45; border: 2px solid #ffd9c4;
-    box-shadow: 0 0 0 3px rgba(217, 106, 69, 0.22), 0 0 18px 4px rgba(217, 106, 69, 0.5);
+    background: var(--terra); border: 2px solid #fff;
+    box-shadow: 0 0 0 3px rgba(181, 80, 44, 0.15), 0 1px 8px rgba(20, 17, 12, 0.3);
     transition: transform 0.15s ease;
   }
   .places-map :global(.pl-pin:hover .pl-dot) { transform: scale(1.35); }
-  /* 悬停提示（暗卡） */
+  /* 悬停提示（浅卡） */
   .places-map :global(.leaflet-tooltip) {
-    background: #26221c; color: #eae5d8; border: 1px solid #3a342a;
-    border-radius: 8px; font: 12px/1.4 var(--sans); box-shadow: none; padding: 5px 10px;
+    background: #fff; color: var(--ink); border: 1px solid var(--line);
+    border-radius: 8px; font: 12px/1.4 var(--sans); box-shadow: 0 4px 14px rgba(38, 34, 28, 0.1); padding: 5px 10px;
   }
-  .places-map :global(.leaflet-tooltip-top:before) { border-top-color: #3a342a; }
-  /* 弹窗（暗卡 + 衬线地名） */
+  .places-map :global(.leaflet-tooltip-top:before) { border-top-color: var(--line); }
+  /* 弹窗（白卡 + 衬线地名） */
   .places-map :global(.leaflet-popup-content-wrapper) {
-    background: #1d1a14; color: #eae5d8; border: 1px solid #3a342a;
-    border-radius: 10px; box-shadow: 0 14px 40px rgba(0, 0, 0, 0.5);
+    background: #fff; color: var(--ink); border: 1px solid var(--line);
+    border-radius: 10px; box-shadow: 0 10px 28px rgba(38, 34, 28, 0.14);
   }
-  .places-map :global(.leaflet-popup-tip) { background: #1d1a14; border: 1px solid #3a342a; }
+  .places-map :global(.leaflet-popup-tip) { background: #fff; border: 1px solid var(--line); }
   .places-map :global(.leaflet-popup-content) { margin: 12px 16px; font: 13px/1.7 var(--sans); }
-  .places-map :global(.leaflet-popup-content b) { font-family: var(--serif); font-size: 14.5px; color: #f0ead9; }
-  .places-map :global(.leaflet-popup-content a) { color: #d96a45; }
-  .places-map :global(.leaflet-container) { font-family: var(--sans); background: #14110c; }
+  .places-map :global(.leaflet-popup-content b) { font-family: var(--serif); font-size: 14.5px; color: var(--ink); }
+  .places-map :global(.leaflet-popup-content a) { color: var(--terra); }
+  .places-map :global(.leaflet-container) { font-family: var(--sans); background: #f2eee2; }
   @media (max-width: 720px) {
     .places-map { height: 340px; }
   }
