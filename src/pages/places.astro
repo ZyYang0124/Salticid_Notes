@@ -106,6 +106,51 @@ for (const c of cards) {
         var pts = JSON.parse(dataEl.textContent || '[]');
         fetch('/geo/world.json').then(function (r) { return r.json(); }).then(function (topo) {
           var countries = topojson.feature(topo, topo.objects.countries);
+          // 去掉南极洲（其制图直边会横贯全图，对分布图毫无意义）
+          countries.features = countries.features.filter(function (f) {
+            return !((f.properties || {}).name === 'Antarctica');
+          });
+          // 反经线拆分：跨 ±180° 的多边形（俄罗斯/斐济等）拆成东西两半，消除横贯全图的直线
+          function ringCrosses(r) {
+            for (var i = 1; i < r.length; i++) if (Math.abs(r[i][0] - r[i - 1][0]) > 180) return true;
+            return false;
+          }
+          function splitRing(r) {
+            var parts = [], cur = [r[0]];
+            for (var i = 1; i < r.length; i++) {
+              var a = r[i - 1], b = r[i];
+              if (Math.abs(b[0] - a[0]) > 180) {
+                var edgeA = a[0] > 0 ? 180 : -180;
+                var edgeB = b[0] > 0 ? 180 : -180;
+                var t = (edgeA - a[0]) / ((b[0] - a[0]) || 1);
+                var midLat = a[1] + t * (b[1] - a[1]);
+                cur.push([edgeA, midLat]);
+                if (cur.length > 2) parts.push(cur);
+                cur = [[-edgeB, midLat]];
+              }
+              cur.push([b[0], b[1]]);
+            }
+            if (cur.length > 2) parts.push(cur);
+            return parts;
+          }
+          countries.features.forEach(function (f) {
+            var g = f.geometry;
+            if (!g) return;
+            if (g.type === 'Polygon' && ringCrosses(g.coordinates[0])) {
+              f.geometry = { type: 'MultiPolygon', coordinates: splitRing(g.coordinates[0]).map(function (r) { return [r]; }) };
+            } else if (g.type === 'MultiPolygon') {
+              var touched = false, rebuilt = [];
+              g.coordinates.forEach(function (poly) {
+                if (ringCrosses(poly[0])) {
+                  touched = true;
+                  splitRing(poly[0]).forEach(function (r) { rebuilt.push([r]); });
+                } else {
+                  rebuilt.push(poly);
+                }
+              });
+              if (touched) g.coordinates = rebuilt;
+            }
+          });
           var places = {
             type: 'FeatureCollection',
             features: pts.map(function (p) {
@@ -132,6 +177,7 @@ for (const c of cards) {
             scrollZoom: false,
             dragRotate: false,
             pitchWithRotate: false,
+            renderWorldCopies: false,
           });
           window.__placesMap = map;
           window.__mapErrs = [];
