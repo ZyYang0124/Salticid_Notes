@@ -4,7 +4,7 @@
 //   - 全部重编码剥离 EXIF（规则 21），原图只读永不修改（规则 20）
 // 产物：public/media/derivatives/*  +  src/data/generated/media-manifest.json（构建期导入）
 
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import sharp from 'sharp';
@@ -55,8 +55,16 @@ async function main() {
   let count = 0;
   mkdirSync(dirname(MANIFEST_OUT), { recursive: true });
 
+  let skippedMissing = 0;
   for (const m of allPublicMedia) {
     const src = resolve(ROOT, m.source_original);
+    if (!existsSync(src)) {
+      // 原图未入库（上传时刻备份延迟/失败）：跳过而非炸掉整个站点构建；
+      // 原图补齐后的下一次构建会自动生成派生图
+      console.warn(`[media] 原图缺失，跳过：${m.source_original}`);
+      skippedMissing += 1;
+      continue;
+    }
     // rotate() 归一方向；重编码不保留任何元数据（EXIF/GPS 全部剥离）
     const pipeline = sharp(src).rotate();
     const rotated = await pipeline.metadata();

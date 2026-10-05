@@ -47,7 +47,7 @@ export interface ExportData {
   originals: Record<string, Uint8Array>;
 }
 
-export async function collectExport(env: Env, opts?: { skipOriginals?: Set<string>; loadOriginals?: boolean }): Promise<ExportData> {
+export async function collectExport(env: Env, opts?: { loadOriginalsFor?: Set<string> }): Promise<ExportData> {
   const observations = await all(env.DB, "SELECT * FROM observations WHERE status = 'published' AND visibility = 'public' ORDER BY public_id");
   const wtBySlug = new Map((await workingTaxaRows(env)).map((t) => [t.slug, t]));
   const referencedWorking = new Map<string, WorkingTaxonRow>();
@@ -83,9 +83,9 @@ export async function collectExport(env: Env, opts?: { skipOriginals?: Set<strin
         license: m.license,
         visibility: 'public',
       });
-      // Worker 同步路径 loadOriginals=false：原图不读不传（曾超资源限制被静默杀掉）；
-      // 原图永久保存在 R2，仓库备份由本地脚本或导出 zip 承担
-      if (opts?.loadOriginals !== false && !(opts?.skipOriginals && opts.skipOriginals.has(m.public_id))) {
+      // 原图只读取指定集合内的照片（同步时仅传本次触发观察的新图）；
+      // 其余照片已在仓库，重复读取会挤爆 Worker 内存（1102 根源）
+      if (opts?.loadOriginalsFor && opts.loadOriginalsFor.has(m.public_id)) {
         const obj = await env.MEDIA.get(`originals/${m.public_id}${m.orig_ext}`);
         if (obj) originalFiles[`originals/${m.public_id}${m.orig_ext}`] = new Uint8Array(await obj.arrayBuffer());
       }
@@ -190,9 +190,9 @@ export async function collectExport(env: Env, opts?: { skipOriginals?: Set<strin
         visibility: 'public',
       });
       exportedMediaIds.add(pid);
-      // Worker 同步路径 loadOriginals=false：原图不读不传（曾超资源限制被静默杀掉）；
-      // 原图永久保存在 R2，仓库备份由本地脚本或导出 zip 承担
-      if (opts?.loadOriginals !== false && !(opts?.skipOriginals && opts.skipOriginals.has(m.public_id))) {
+      // 原图只读取指定集合内的照片（同步时仅传本次触发观察的新图）；
+      // 其余照片已在仓库，重复读取会挤爆 Worker 内存（1102 根源）
+      if (opts?.loadOriginalsFor && opts.loadOriginalsFor.has(m.public_id)) {
         const obj = await env.MEDIA.get(`originals/${m.public_id}${m.orig_ext}`);
         if (obj) originalFiles[`originals/${m.public_id}${m.orig_ext}`] = new Uint8Array(await obj.arrayBuffer());
       }

@@ -19,6 +19,8 @@ export interface SaveResult {
   fileStem: string;
   width: number;
   height: number;
+  /** 原图扩展名（含点，如 .jpg）——上传时刻原图备份用 */
+  origExt: string;
 }
 
 function bad(msg: string): never {
@@ -105,7 +107,7 @@ export async function saveUpload(
     'INSERT OR IGNORE INTO photo_hashes (hash, public_id) VALUES (?, ?)',
     photoHash, publicId,
   );
-  return { publicId, fileStem: publicId, width: Math.round(input.width), height: Math.round(input.height) };
+  return { publicId, fileStem: publicId, width: Math.round(input.width), height: Math.round(input.height), origExt: ext };
 }
 
 export interface MediaRow extends Row {
@@ -159,3 +161,4 @@ export async function mediaByPublicId(env: Env, publicId: string): Promise<Media
 export async function mediaForObservation(env: Env, obsRowId: number): Promise<MediaRow[]> {
   return all<MediaRow>(env.DB, 'SELECT * FROM media WHERE observation_id = ? ORDER BY sort_order', obsRowId);
 }
+

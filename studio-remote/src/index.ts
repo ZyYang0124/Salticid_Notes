@@ -26,7 +26,7 @@ import { parseExif } from './exif';
 import { renderArticle } from './article';
 import { buildResolvers } from './embeds';
 import { buildExportZip } from './export';
-import { syncToGitHub } from './github';
+import { backupOriginalToGitHub, syncToGitHub } from './github';
 import { esc, loginPage, mediaPage, noteEditorHtml, obsEditorHtml, page, STYLES, homePage, draftsPage, dataPage, relTime, taxaManagePage, importPage, type FeedItem } from './pages';
 import { invitePage } from './invites';
 import { OBS_EDITOR_SCRIPT, NOTE_EDITOR_SCRIPT, LOGIN_SCRIPT, PROFILE_SCRIPT, IMPORT_SCRIPT } from './editorjs';
@@ -464,6 +464,14 @@ app.post('/studio/observations/:public_id/photos', async (c) => {
       saved.publicId,
     );
     added.push(saved.publicId);
+    if (g.original) {
+      c.executionCtx.waitUntil((async () => {
+        const origObj = await c.env.MEDIA.get(`originals/${saved.publicId}${saved.origExt}`);
+        if (origObj) {
+          await backupOriginalToGitHub(c.env, saved.publicId, new Uint8Array(await origObj.arrayBuffer()), `${saved.publicId}${saved.origExt}`);
+        }
+      })());
+    }
   }
   await audit(c.env, u.display_name, 'media', obs.public_id, 'upload', { added });
   return c.json({ ok: true, added });
@@ -671,12 +679,17 @@ app.post('/studio/api/observations/:public_id/publish', async (c) => {
   );
   await audit(c.env, u.display_name, 'observation', obs.public_id, 'observation.published', { from: obs.status, to: 'published' });
   // 规则 5/7：发布即自动提交仓库（push 触发公开站构建）；失败不影响本次发布，可手动重试
-  c.executionCtx.waitUntil(
-    syncToGitHub(c.env, obs.public_id).then((r) =>
-      audit(c.env, u.display_name, 'github-sync', obs.public_id, r.ok ? 'sync-ok: ' + r.detail : 'sync-fail: ' + r.detail),
-    ),
-  );
-  return c.json({ ok: true, public_url: `/observations/${obs.public_id}/`, status: 'published', sync: 'queued', warnings });
+  // 发布同步改为同步执行：waitUntil 的 ~30s 窗口装不下大原图的 GitHub 上传（曾静默失败）。
+  // 发布响应会多等几秒～几十秒，Studio 端按钮已有「主站更新中」提示兜住体验。
+  let syncResult: { ok: boolean; detail: string } = { ok: false, detail: '未执行' };
+  try {
+    await new Promise(function (r) { setTimeout(r, 800); });
+    syncResult = await syncToGitHub(c.env, obs.public_id);
+    await audit(c.env, u.display_name, 'github-sync', obs.public_id, syncResult.ok ? 'sync-ok: ' + syncResult.detail : 'sync-fail: ' + syncResult.detail);
+  } catch (e) {
+    await audit(c.env, u.display_name, 'github-sync', obs.public_id, 'sync-fail: ' + String(e));
+  }
+  return c.json({ ok: true, public_url: `/observations/${obs.public_id}/`, status: 'published', sync: syncResult.ok ? 'done' : 'failed', sync_detail: syncResult.detail, warnings });
 });
 
 app.post('/studio/api/observations/:public_id/private', async (c) => {
