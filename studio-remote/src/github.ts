@@ -100,12 +100,16 @@ export async function syncToGitHub(env: Env, label = ''): Promise<SyncResult> {
     // 同步读强制主库：发布后 waitUntil 立即读 D1 可能命中滞后副本，导出会缺刚发布的观察
     const db = typeof (env.DB as any).withSession === 'function' ? (env.DB as any).withSession('first-primary') : env.DB;
     // 原图只读取本次触发观察的新照片（全量读取曾超资源限制被静默杀掉；旧照片已在仓库无需重传）
+    const syncedIds = new Set(
+      (await all<{ public_id: string }>(db, 'SELECT public_id FROM synced_originals')).map((r) => r.public_id),
+    );
+    // 只加载「本次触发观察的、且尚未入库」的原图——已入库的重读会挤爆内存（1102 根源）
     const syncOriginals = new Set<string>();
     if (label && /^SFN-/.test(label)) {
       const obsRow = await get<any>(db, 'SELECT id FROM observations WHERE public_id = ?', label);
       if (obsRow) {
         const rows = await all<{ public_id: string }>(db, 'SELECT public_id FROM media WHERE observation_id = ?', obsRow.id);
-        rows.forEach(function (r) { syncOriginals.add(r.public_id); });
+        rows.forEach(function (r) { if (!syncedIds.has(r.public_id)) syncOriginals.add(r.public_id); });
       }
     }
     let data = await collectExport({ ...env, DB: db }, { loadOriginalsFor: syncOriginals });
