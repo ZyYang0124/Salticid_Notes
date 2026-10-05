@@ -46,17 +46,5 @@
     "evidence": "field",
     "remarks": null,
     "is_current": true
-  },
-  {
-    "id": "studio-106",
-    "observation_id": "studio-34",
-    "taxon_id": "tax-wt-spartaeus-yingdeensis",
-    "display_identification": "Spartaeus yingdeensis",
-    "identified_by_profile_id": null,
-    "identified_by_text": "Nyar",
-    "identified_at": "2026-10-05",
-    "evidence": "field",
-    "remarks": null,
-    "is_current": true
   }
 ]
