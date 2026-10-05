@@ -1,14 +1,16 @@
 [
   {
     "id": "prof-zhiyong",
+    "slug": "owner",
     "display_name": "咩咩",
     "display_name_en": null,
-    "title": "姆不弟",
+    "title": null,
     "bio": "咩咩是一只翠蛛，来自快乐的滇滇Land。",
     "photo_media_public_id": "SN-2026-00031"
   },
   {
     "id": "prof-hamu",
+    "slug": "hamu",
     "display_name": "哈姆",
     "display_name_en": null,
     "title": null,
@@ -17,6 +19,7 @@
   },
   {
     "id": "prof-yi",
+    "slug": "yi",
     "display_name": "Nyar",
     "display_name_en": null,
     "title": null,
