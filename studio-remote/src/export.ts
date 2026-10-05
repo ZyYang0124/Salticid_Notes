@@ -47,7 +47,7 @@ export interface ExportData {
   originals: Record<string, Uint8Array>;
 }
 
-export async function collectExport(env: Env): Promise<ExportData> {
+export async function collectExport(env: Env, opts?: { skipOriginals?: Set<string>; loadOriginals?: boolean }): Promise<ExportData> {
   const observations = await all(env.DB, "SELECT * FROM observations WHERE status = 'published' AND visibility = 'public' ORDER BY public_id");
   const wtBySlug = new Map((await workingTaxaRows(env)).map((t) => [t.slug, t]));
   const referencedWorking = new Map<string, WorkingTaxonRow>();
@@ -83,8 +83,12 @@ export async function collectExport(env: Env): Promise<ExportData> {
         license: m.license,
         visibility: 'public',
       });
-      const obj = await env.MEDIA.get(`originals/${m.public_id}${m.orig_ext}`);
-      if (obj) originalFiles[`originals/${m.public_id}${m.orig_ext}`] = new Uint8Array(await obj.arrayBuffer());
+      // Worker 同步路径 loadOriginals=false：原图不读不传（曾超资源限制被静默杀掉）；
+      // 原图永久保存在 R2，仓库备份由本地脚本或导出 zip 承担
+      if (opts?.loadOriginals !== false && !(opts?.skipOriginals && opts.skipOriginals.has(m.public_id))) {
+        const obj = await env.MEDIA.get(`originals/${m.public_id}${m.orig_ext}`);
+        if (obj) originalFiles[`originals/${m.public_id}${m.orig_ext}`] = new Uint8Array(await obj.arrayBuffer());
+      }
     }
     const idn = await get<any>(env.DB, 'SELECT * FROM identifications WHERE observation_id = ? AND is_current = 1 LIMIT 1', o.id);
     if (idn && idn.taxon_slug) {
@@ -186,8 +190,12 @@ export async function collectExport(env: Env): Promise<ExportData> {
         visibility: 'public',
       });
       exportedMediaIds.add(pid);
-      const obj = await env.MEDIA.get(`originals/${m.public_id}${m.orig_ext}`);
-      if (obj) originalFiles[`originals/${m.public_id}${m.orig_ext}`] = new Uint8Array(await obj.arrayBuffer());
+      // Worker 同步路径 loadOriginals=false：原图不读不传（曾超资源限制被静默杀掉）；
+      // 原图永久保存在 R2，仓库备份由本地脚本或导出 zip 承担
+      if (opts?.loadOriginals !== false && !(opts?.skipOriginals && opts.skipOriginals.has(m.public_id))) {
+        const obj = await env.MEDIA.get(`originals/${m.public_id}${m.orig_ext}`);
+        if (obj) originalFiles[`originals/${m.public_id}${m.orig_ext}`] = new Uint8Array(await obj.arrayBuffer());
+      }
     }
     // 封面：posts.cover_media_id → 媒体稳定编号（公开站 postCover 依赖此字段）
     const coverRow = p.cover_media_id
@@ -259,8 +267,11 @@ export async function collectExport(env: Env): Promise<ExportData> {
         if (obj) originalFiles[`originals/${m.public_id}${m.orig_ext}`] = new Uint8Array(await obj.arrayBuffer());
       }
     }
+    // slug：手写档案里有自己的 slug；新档案由档案 id 派生（prof-yi → yi），否则伙伴页会过滤掉
+    const slug = profileId === 'prof-zhiyong' ? 'owner' : profileId.replace(/^prof-/, '');
     profilesOut.push({
       id: profileId,
+      slug,
       display_name: u.display_name,
       display_name_en: null,
       title: u.title ?? null,

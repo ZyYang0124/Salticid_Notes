@@ -603,9 +603,12 @@ async function transitionObservation(
 function queueSyncIfAffectsSite(c: any, env: Env, publicId: string, from: string, to: string): void {
   if (from !== 'published' && to !== 'published') return;
   c.executionCtx.waitUntil(
-    syncToGitHub(env, publicId).then((r) =>
-      audit(env, 'system', 'github-sync', publicId, r.ok ? 'sync-ok: ' + r.detail : 'sync-fail: ' + r.detail),
-    ),
+    // 先等状态写入对同步读可见（waitUntil 读若早于写入生效会导出旧数据——义的状态切换曾踩中）
+    new Promise(function (r) { setTimeout(r, 800); })
+      .then(function () { return syncToGitHub(env, publicId); })
+      .then(function (r) {
+        return audit(env, 'system', 'github-sync', publicId, r.ok ? 'sync-ok: ' + r.detail : 'sync-fail: ' + r.detail);
+      }),
   );
 }
 
@@ -1464,9 +1467,39 @@ app.post('/studio/invite/remove', async (c) => {
 // ---------- 导出（zip：JSON + 新增原图） ----------
 
 // 手动同步：把当前已发布内容整体提交到仓库并触发公开站构建（发布时自动做过，失败可在此重试）
+// TEMP DEBUG：导出查询在 Worker 内的实时视图（站长）
+app.get('/studio/api/debug-export', async (c) => {
+  const u = user(c);
+  if (u.role !== 'owner') return c.json({ error: 'Forbidden' }, 403);
+  const q = "SELECT public_id, status, visibility FROM observations WHERE status = 'published' AND visibility = 'public' ORDER BY public_id";
+  const bare = await all<any>(c.env.DB, q);
+  let session: any = null, sessionErr: string | null = null;
+  try {
+    const db = typeof (c.env.DB as any).withSession === 'function' ? (c.env.DB as any).withSession('first-primary') : c.env.DB;
+    session = (await all<any>(db, q)).map((r: any) => r.public_id);
+  } catch (e) { sessionErr = String(e); }
+  let collectCount: number | null = null, collectIds: string[] | null = null, collectErr: string | null = null;
+  try {
+    const { collectExport } = await import('./export');
+    const data = await collectExport(c.env);
+    const parsed = JSON.parse(data.observationsJson);
+    collectCount = parsed.length;
+    collectIds = parsed.map((x: any) => x.public_id);
+  } catch (e) { collectErr = String(e); }
+  return c.json({
+    collectCount, collectIds, collectErr,
+    bareCount: bare.length,
+    bareIds: bare.map((r) => r.public_id),
+    sessionIds: session,
+    sessionErr,
+    viewer: u.display_name,
+  });
+});
+
 app.post('/studio/api/sync', async (c) => {
   const u = user(c);
   if (!sameOrigin(c.req.raw)) return c.json({ error: 'Forbidden' }, 403);
+  c.executionCtx.waitUntil(audit(c.env, u.display_name, 'github-sync', null, 'manual-sync-start'));
   const r = await syncToGitHub(c.env);
   await audit(c.env, u.display_name, 'github-sync', null, r.ok ? 'manual-ok: ' + r.detail : 'manual-fail: ' + r.detail);
   return c.json(r, r.ok ? 200 : 500);

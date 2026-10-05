@@ -48,7 +48,7 @@ for (const sp of loadStudio<Partial<Profile> & { id: string }>('profiles')) {
       id: sp.id,
       display_name: sp.display_name ?? sp.id,
       display_name_en: null,
-      slug: null,
+      slug: sp.slug ?? (sp.id.replace(/^prof-/, '') || null),
       role: 'contributor',
       profile_visibility: 'public',
       title: sp.title ?? null,

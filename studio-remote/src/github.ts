@@ -43,7 +43,21 @@ export async function syncToGitHub(env: Env, label = ''): Promise<SyncResult> {
   try {
     if (!env.GITHUB_TOKEN) return { ok: false, detail: '未配置 GITHUB_TOKEN' };
 
-    const data = await collectExport(env);
+    // 同步读强制主库：发布后 waitUntil 立即读 D1 可能命中滞后副本，导出会缺刚发布的观察
+    const db = typeof (env.DB as any).withSession === 'function' ? (env.DB as any).withSession('first-primary') : env.DB;
+    // 数据同步不携带原图（大文件 base64 上传曾超 Worker 资源限制被静默杀掉）；
+    // 原图永久保存在 R2，仓库原图备份走本地脚本
+    let data = await collectExport({ ...env, DB: db }, { loadOriginals: false });
+    // 自愈：触发的观察若已发布但不在导出里（副本滞后），重试两次
+    if (label && /^SFN-/.test(label)) {
+      for (let attempt = 0; attempt < 2; attempt++) {
+        let present = false;
+        try { present = JSON.parse(data.observationsJson).some(function (o: any) { return o.public_id === label; }); } catch (e) {}
+        if (present) break;
+        await new Promise(function (r) { setTimeout(r, 1500); });
+        data = await collectExport({ ...env, DB: db }, { loadOriginals: false });
+      }
+    }
     const jsonFiles: { path: string; content: string }[] = [
       { path: 'src/data/studio-places.json', content: data.placesJson },
       { path: 'src/data/studio-taxa.json', content: data.taxaJson },
@@ -64,13 +78,7 @@ export async function syncToGitHub(env: Env, label = ''): Promise<SyncResult> {
       ...f,
       encoding: 'utf-8' as const,
     }));
-    for (const [key, bytes] of Object.entries(data.originals)) {
-      const filename = key.slice('originals/'.length);
-      const pid = filename.replace(/\.(jpg|jpeg|png)$/i, '');
-      if (!pid || synced.has(pid)) continue;
-      files.push({ path: `media/originals/${filename}`, content: toBase64(bytes), encoding: 'base64' });
-      newOriginals.push(pid);
-    }
+    // 原图不随数据同步上传：R2 为永久存储，仓库备份由本地脚本承担
 
     // 并发发布：ref 更新撞车（422）时重读最新 ref 重试，最多 3 次
     let lastError: unknown = null;
@@ -111,7 +119,10 @@ export async function syncToGitHub(env: Env, label = ''): Promise<SyncResult> {
         for (const pid of newOriginals) {
           await run(env.DB, 'INSERT OR REPLACE INTO synced_originals (public_id) VALUES (?)', pid);
         }
-        return { ok: true, detail: `已提交 ${files.length} 个文件${newOriginals.length ? `（含 ${newOriginals.length} 张新原图）` : ''}` };
+        // 审计带上导出的观察清单（排障用：同步缺内容时立即可见）
+        let exportedIds = '';
+        try { exportedIds = JSON.parse(data.observationsJson).map(function (o: any) { return o.public_id; }).join(','); } catch (e) {}
+        return { ok: true, detail: `已提交 ${files.length} 个文件 · 观察[${exportedIds}]` };
       } catch (err: any) {
         lastError = err;
         const msg = String(err?.message ?? err);
