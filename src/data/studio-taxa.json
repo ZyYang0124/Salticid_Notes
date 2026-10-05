@@ -31,5 +31,16 @@
     "status": "working",
     "slug": "siler-zhangae",
     "personal_note": null
+  },
+  {
+    "id": "tax-wt-spartaeus-yingdeensis",
+    "rank": "species",
+    "scientific_name": "Spartaeus yingdeensis",
+    "authorship": null,
+    "chinese_name": "英德散蛛",
+    "parent_id": null,
+    "status": "working",
+    "slug": "spartaeus-yingdeensis",
+    "personal_note": null
   }
 ]
