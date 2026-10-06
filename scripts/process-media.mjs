@@ -16,6 +16,40 @@ const MANIFEST_OUT = resolve(ROOT, 'src/data/generated/media-manifest.json');
 const LEGACY_MANIFEST = resolve(DERIV_DIR, 'manifest.json');
 
 const WIDTHS = [480, 768, 1280, 1920];
+// 原图不在仓库时的构建期缓存：存放从 Studio 拉取的 jpg 母本（不进版本控制）
+const MASTER_DIR = resolve(ROOT, '.media-cache');
+const STUDIO_BASE = 'https://studio.salticidnotes.cn';
+// 上传端只生成 ≤ 原图宽度的档位，取母本时从最大档逐档向下试探
+const MASTER_WIDTHS = [1920, 1280, 768, 480];
+
+/** 从 Studio 取该媒体最大的 jpg 母本（构建通道，凭 STUDIO_MEDIA_TOKEN），返回取到的宽度。 */
+async function pullStudioMaster(publicId, out) {
+  const token = process.env.STUDIO_MEDIA_TOKEN;
+  if (!token) throw new Error('未配置构建环境变量 STUDIO_MEDIA_TOKEN');
+  let lastError = new Error('Studio 里没有该媒体的任何派生图');
+  for (const w of MASTER_WIDTHS) {
+    const key = `${publicId}-${w}.jpg`;
+    const url = `${STUDIO_BASE}/media/derivatives/${key}?token=${encodeURIComponent(token)}`;
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      try {
+        const res = await fetch(url, { signal: AbortSignal.timeout(30000) });
+        // 404 = 该宽度档不存在（原图窄于此），直接试更小一档，不消耗重试
+        if (res.status === 404) break;
+        const buf = Buffer.from(await res.arrayBuffer());
+        // 只认真 JPEG：被鉴权拦截时返回的是登录页/错误页，写盘即成伪图
+        const isJpeg = res.ok && buf.length > 1024 && buf[0] === 0xff && buf[1] === 0xd8 && buf[2] === 0xff;
+        if (!isJpeg) throw new Error(`HTTP ${res.status}、${buf.length}B、响应不是 JPEG`);
+        mkdirSync(dirname(out), { recursive: true });
+        writeFileSync(out, buf);
+        return w;
+      } catch (e) {
+        lastError = e;
+        if (attempt < 3) console.warn(`[media] ${key} 第 ${attempt} 次拉取失败（${e.message}），重试…`);
+      }
+    }
+  }
+  throw lastError;
+}
 
 const FORMATS = [
   { ext: 'avif', fn: () => sharp().avif({ quality: 45 }) },
@@ -56,29 +90,21 @@ async function main() {
   mkdirSync(dirname(MANIFEST_OUT), { recursive: true });
 
   const fetchFailures = [];
-  let fetchedMissing = 0;
+  let pulledMasters = 0;
   for (const m of allPublicMedia) {
-    const src = resolve(ROOT, m.source_original);
+    // 仓库里有原图就用原图；缺失（新记录只永久存 R2）则改用上传时浏览器生成的 jpg 母本——
+    // 公开站最大展示宽度就是 1920，母本一两百 KB，构建无需每次拖 20MB 级原图。
+    let src = resolve(ROOT, m.source_original);
     if (!existsSync(src)) {
-      // 原图不在仓库：从 Studio 的 R2 流端点拉取（原图永久存 R2，仓库不再承担新原图）。
-      // 需要构建环境变量 STUDIO_MEDIA_TOKEN（与 Studio Worker 的 secret MEDIA_TOKEN 一致）。
-      const token = process.env.STUDIO_MEDIA_TOKEN;
-      const url = `https://studio.salticidnotes.cn/studio/media-original/${m.id}?token=${encodeURIComponent(token ?? '')}`;
+      const master = resolve(MASTER_DIR, `${m.id}-master.jpg`);
       try {
-        if (!token) throw new Error('未配置构建环境变量 STUDIO_MEDIA_TOKEN');
-        const res = await fetch(url);
-        const buf = Buffer.from(await res.arrayBuffer());
-        // 只认真图：端点被会话中间件拦回登录页时响应是 HTML，写盘即成伪 JPEG
-        const isJpeg = buf[0] === 0xff && buf[1] === 0xd8 && buf[2] === 0xff;
-        const isPng = buf.subarray(0, 8).toString('hex') === '89504e470d0a1a0a';
-        if (!res.ok || (!isJpeg && !isPng)) {
-          throw new Error(`HTTP ${res.status}、${buf.length}B、响应不是图片（token 无效或被鉴权拦截？）`);
+        if (!existsSync(master)) {
+          await pullStudioMaster(m.id, master);
+          pulledMasters += 1;
         }
-        mkdirSync(dirname(src), { recursive: true });
-        writeFileSync(src, buf);
-        fetchedMissing += 1;
+        src = master;
       } catch (e) {
-        fetchFailures.push(`${m.source_original} — ${e.message}`);
+        fetchFailures.push(`${m.id} — ${e.message}`);
         continue;
       }
     }
@@ -126,13 +152,13 @@ async function main() {
   }
 
   if (fetchFailures.length) {
-    console.error(`\n[media] ${fetchFailures.length} 张公开原图无法取得，构建中止（避免上线缺图产物）：`);
+    console.error(`\n[media] ${fetchFailures.length} 个公开媒体取不到图像源，构建中止（避免上线缺图产物）：`);
     for (const f of fetchFailures) console.error(`  · ${f}`);
     console.error(`排查顺序：
   1) Studio Worker 的 secret：cd studio-remote && npx wrangler secret put MEDIA_TOKEN
   2) 公开站构建环境变量 STUDIO_MEDIA_TOKEN 与之一致（Cloudflare → salticid-notes → Settings → Environment variables）
-  3) 自检应返回 200 图片而非 302 登录页：
-     curl -sI "https://studio.salticidnotes.cn/studio/media-original/SN-2026-00001?token=<MEDIA_TOKEN>"`);
+  3) 自检应返回 200 JPEG 而非 403/登录页：
+     curl -sI "https://studio.salticidnotes.cn/media/derivatives/SN-2026-00001-1920.jpg?token=<MEDIA_TOKEN>"`);
     process.exit(1);
   }
 
@@ -141,7 +167,7 @@ async function main() {
   // 旧清单（兼容 /media/derivatives/manifest.json 引用者）
   writeFileSync(LEGACY_MANIFEST, JSON.stringify(manifest, null, 2));
   console.log(
-    `已生成 ${count} 张多格式派生图（自 R2 补拉原图 ${fetchedMissing} 张）（${Object.keys(manifest).length}/${allPublicMedia.length} 个媒体，其余为非公开记录）。原图未做任何修改。`,
+    `已生成 ${count} 张多格式派生图（自 Studio 取 jpg 母本 ${pulledMasters} 张）（${Object.keys(manifest).length}/${allPublicMedia.length} 个媒体，其余为非公开记录）。原图未做任何修改。`,
   );
 }
 

@@ -8,6 +8,9 @@ node_modules/
 # generated media derivatives（由 scripts/process-media.mjs 生成，原图永不修改）
 public/media/derivatives/
 
+# 构建管线从 Studio 取回的 1920 母图缓存（可再生，不进仓库）
+.media-cache/
+
 # Field Studio 私有后端（数据库与上传原图不进仓库；密钥只进 .env）
 data/*.db
 data/*.db-*
