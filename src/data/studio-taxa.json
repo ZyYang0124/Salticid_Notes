@@ -66,14 +66,14 @@
     "personal_note": null
   },
   {
-    "id": "tax-wt-hyllus",
-    "rank": "genus",
-    "scientific_name": "Hyllus",
+    "id": "tax-wt-hyllus-decoratus",
+    "rank": "species",
+    "scientific_name": "Hyllus decoratus",
     "authorship": null,
     "chinese_name": null,
     "parent_id": null,
     "status": "working",
-    "slug": "hyllus",
+    "slug": "hyllus-decoratus",
     "personal_note": null
   },
   {

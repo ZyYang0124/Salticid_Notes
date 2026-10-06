@@ -84,13 +84,13 @@
     "is_current": true
   },
   {
-    "id": "studio-177",
+    "id": "studio-209",
     "observation_id": "studio-38",
-    "taxon_id": "tax-wt-hyllus",
-    "display_identification": "Hyllus sp.",
+    "taxon_id": "tax-wt-hyllus-decoratus",
+    "display_identification": "Hyllus decoratus",
     "identified_by_profile_id": null,
-    "identified_by_text": "Nyar",
-    "identified_at": "2026-10-05",
+    "identified_by_text": "咩咩",
+    "identified_at": "2026-10-06",
     "evidence": "field",
     "remarks": null,
     "is_current": true
