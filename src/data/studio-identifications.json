@@ -156,13 +156,13 @@
     "is_current": true
   },
   {
-    "id": "studio-174",
+    "id": "studio-210",
     "observation_id": "studio-44",
     "taxon_id": "tax-wt-synagelides-yunnan",
     "display_identification": "Synagelides yunnan",
     "identified_by_profile_id": null,
     "identified_by_text": "Nyar",
-    "identified_at": "2026-10-05",
+    "identified_at": "2026-10-06",
     "evidence": "field",
     "remarks": null,
     "is_current": true

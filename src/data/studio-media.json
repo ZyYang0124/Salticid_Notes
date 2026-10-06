@@ -630,20 +630,6 @@
     "visibility": "public"
   },
   {
-    "id": "SN-2026-00083",
-    "public_id": "SN-2026-00083",
-    "observation_id": "studio-44",
-    "source_original": "media/originals/SN-2026-00083.png",
-    "view_type": "live_dorsal",
-    "caption": null,
-    "sort_order": 1,
-    "is_cover": false,
-    "photographer_profile_id": null,
-    "photographer_name": "Nyar",
-    "license": "all_rights_reserved",
-    "visibility": "public"
-  },
-  {
     "id": "SN-2026-00082",
     "public_id": "SN-2026-00082",
     "observation_id": "studio-44",
