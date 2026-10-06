@@ -56,14 +56,29 @@ async function main() {
   mkdirSync(dirname(MANIFEST_OUT), { recursive: true });
 
   let skippedMissing = 0;
+  let fetchedMissing = 0;
   for (const m of allPublicMedia) {
     const src = resolve(ROOT, m.source_original);
     if (!existsSync(src)) {
-      // 原图未入库（上传时刻备份延迟/失败）：跳过而非炸掉整个站点构建；
-      // 原图补齐后的下一次构建会自动生成派生图
-      console.warn(`[media] 原图缺失，跳过：${m.source_original}`);
-      skippedMissing += 1;
-      continue;
+      // 原图不在仓库：从 Studio 的 R2 流端点拉取（原图永久存 R2，仓库不再承担新原图）。
+      // 需要 Pages 构建环境变量 STUDIO_MEDIA_TOKEN（与 Worker 的 MEDIA_TOKEN 一致）。
+      const token = process.env.STUDIO_MEDIA_TOKEN;
+      if (!token) {
+        console.warn(`[media] 原图缺失且未配置 STUDIO_MEDIA_TOKEN，跳过：${m.source_original}`);
+        skippedMissing += 1;
+        continue;
+      }
+      const url = `https://studio.salticidnotes.cn/studio/media-original/${m.id}?token=${encodeURIComponent(token)}`;
+      try {
+        const buf = Buffer.from(await (await fetch(url)).arrayBuffer());
+        mkdirSync(dirname(src), { recursive: true });
+        writeFileSync(src, buf);
+        fetchedMissing += 1;
+      } catch (e) {
+        console.warn(`[media] 原图拉取失败，跳过：${m.source_original}（${e.message}）`);
+        skippedMissing += 1;
+        continue;
+      }
     }
     // rotate() 归一方向；重编码不保留任何元数据（EXIF/GPS 全部剥离）
     const pipeline = sharp(src).rotate();
@@ -113,7 +128,7 @@ async function main() {
   // 旧清单（兼容 /media/derivatives/manifest.json 引用者）
   writeFileSync(LEGACY_MANIFEST, JSON.stringify(manifest, null, 2));
   console.log(
-    `已生成 ${count} 张多格式派生图（${Object.keys(manifest).length}/${allPublicMedia.length} 个媒体，其余为非公开记录）。原图未做任何修改。`,
+    `已生成 ${count} 张多格式派生图（缺失原图跳过 ${skippedMissing}，自 R2 补拉 ${fetchedMissing}）（${Object.keys(manifest).length}/${allPublicMedia.length} 个媒体，其余为非公开记录）。原图未做任何修改。`,
   );
 }
 
