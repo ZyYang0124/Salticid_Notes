@@ -26,7 +26,7 @@ import { parseExif } from './exif';
 import { renderArticle } from './article';
 import { buildResolvers } from './embeds';
 import { buildExportZip } from './export';
-import { backupOriginalToGitHub, syncToGitHub } from './github';
+import { syncToGitHub } from './github';
 import { esc, loginPage, mediaPage, noteEditorHtml, obsEditorHtml, page, STYLES, homePage, draftsPage, dataPage, relTime, taxaManagePage, importPage, type FeedItem } from './pages';
 import { invitePage } from './invites';
 import { OBS_EDITOR_SCRIPT, NOTE_EDITOR_SCRIPT, LOGIN_SCRIPT, PROFILE_SCRIPT, IMPORT_SCRIPT } from './editorjs';
@@ -1224,6 +1224,23 @@ app.get('/studio/api/regeo', async (c) => {
   return c.json({ ok: false, error: 'unavailable' }, 502);
 });
 
+// 媒体原图流（构建管线拉取用；token 鉴权——原图含 GPS EXIF，不可公开）
+app.get('/studio/media-original/:publicId', async (c) => {
+  if (c.env.MEDIA_TOKEN && c.req.query('token') !== c.env.MEDIA_TOKEN) {
+    return c.text('Forbidden', 403);
+  }
+  const publicId = c.req.param('publicId');
+  if (!/^SN-\d{4}-\d{4,5}$/.test(publicId)) return c.text('Bad id', 400);
+  const row = await get<any>(c.env.DB, 'SELECT orig_ext FROM media WHERE public_id = ?', publicId);
+  const ext = row?.orig_ext || '.jpg';
+  const obj = await c.env.MEDIA.get(`originals/${publicId}${ext}`);
+  if (!obj) return c.text('Not found', 404);
+  return c.body(obj.body, 200, {
+    'Content-Type': 'image/jpeg',
+    'Cache-Control': 'public, max-age=604800, immutable',
+  });
+});
+
 // ---------- 札记 ----------
 
 /** 札记版式模板白名单（与公开站 src/lib/noteTemplates.ts 保持一致） */
@@ -1480,35 +1497,6 @@ app.post('/studio/invite/remove', async (c) => {
 // ---------- 导出（zip：JSON + 新增原图） ----------
 
 // 手动同步：把当前已发布内容整体提交到仓库并触发公开站构建（发布时自动做过，失败可在此重试）
-// TEMP DEBUG：导出查询在 Worker 内的实时视图（站长）
-app.get('/studio/api/debug-export', async (c) => {
-  const u = user(c);
-  if (u.role !== 'owner') return c.json({ error: 'Forbidden' }, 403);
-  const q = "SELECT public_id, status, visibility FROM observations WHERE status = 'published' AND visibility = 'public' ORDER BY public_id";
-  const bare = await all<any>(c.env.DB, q);
-  let session: any = null, sessionErr: string | null = null;
-  try {
-    const db = typeof (c.env.DB as any).withSession === 'function' ? (c.env.DB as any).withSession('first-primary') : c.env.DB;
-    session = (await all<any>(db, q)).map((r: any) => r.public_id);
-  } catch (e) { sessionErr = String(e); }
-  let collectCount: number | null = null, collectIds: string[] | null = null, collectErr: string | null = null;
-  try {
-    const { collectExport } = await import('./export');
-    const data = await collectExport(c.env);
-    const parsed = JSON.parse(data.observationsJson);
-    collectCount = parsed.length;
-    collectIds = parsed.map((x: any) => x.public_id);
-  } catch (e) { collectErr = String(e); }
-  return c.json({
-    collectCount, collectIds, collectErr,
-    bareCount: bare.length,
-    bareIds: bare.map((r) => r.public_id),
-    sessionIds: session,
-    sessionErr,
-    viewer: u.display_name,
-  });
-});
-
 app.post('/studio/api/sync', async (c) => {
   const u = user(c);
   if (!sameOrigin(c.req.raw)) return c.json({ error: 'Forbidden' }, 403);

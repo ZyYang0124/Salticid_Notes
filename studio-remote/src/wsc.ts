@@ -174,21 +174,32 @@ export interface SpeciesSuggestion { epithet: string; status: string }
 
 /** 属下物种预测：返回该属全部组合及状态（客户端过滤 ACCEPTED），WSC 不可达返回 null */
 export async function suggestSpecies(env: Env, genus: string): Promise<SpeciesSuggestion[] | null> {
-  // v2：旧正则的 [^-]* 会被含连字符的作者名（如 O. Pickard-Cambridge）截断导致漏种；
-  // 换 tempered-dot 并升缓存键版本，让已缓存的残缺结果自然失效
-  const key = 'complete:species:v2:' + genus.toLowerCase();
+  // v3：WSC 检索页有分页（每页 ~25 条），多种属此前只取第一页；
+  // 现在跟随分页抓全（上限 12 页），缓存键升版让旧截断结果失效
+  const key = 'complete:species:v3:' + genus.toLowerCase();
   const hit = await cachedPayload(env, key, 14);
   if (hit) return hit as SpeciesSuggestion[];
-  const html = await fetchWsc(`/search?searchType=genus&query=${encodeURIComponent(genus)}`);
-  if (html == null) return null;
-  const combos = [
-    ...html.matchAll(
-      /<em>([A-Za-z][a-z-]+)\s+([a-z-]+)<\/em>(?:(?!<em>)[\s\S])*?-\s*<span[^>]*>\s*([A-Z]+)/g,
-    ),
-  ]
-    .filter((m) => m[1].toLowerCase() === genus.toLowerCase())
-    .map((m) => ({ epithet: m[2], status: m[3] }));
-  const out = combos.length ? combos : null;
+  const seen = new Map<string, SpeciesSuggestion>();
+  let page = 1;
+  const MAX_PAGES = 12;
+  while (page <= MAX_PAGES) {
+    const html = await fetchWsc(
+      `/search?searchType=genus&query=${encodeURIComponent(genus)}&page=${page}`,
+    );
+    if (html == null) return page === 1 ? null : (seen.size ? [...seen.values()] : null);
+    const combos = [
+      ...html.matchAll(
+        /<em>([A-Za-z][a-z-]+)\s+([a-z-]+)<\/em>(?:(?!<em>)[\s\S])*?-\s*<span[^>]*>\s*([A-Z]+)/g,
+      ),
+    ]
+      .filter((m) => m[1].toLowerCase() === genus.toLowerCase())
+      .map((m) => ({ epithet: m[2], status: m[3] }));
+    for (const c of combos) if (!seen.has(c.epithet)) seen.set(c.epithet, c);
+    const hasNext = new RegExp(`search\\?searchType=genus&query=[^"]*page=${page + 1}`).test(html);
+    if (!combos.length || !hasNext) break;
+    page += 1;
+  }
+  const out = seen.size ? [...seen.values()] : null;
   if (out) await savePayload(env, key, out);
   return out;
 }

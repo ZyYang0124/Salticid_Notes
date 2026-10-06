@@ -498,7 +498,8 @@ const OBS_EDITOR_JS = `
     var qLower = q.trim().toLowerCase();
     var exact = q && list.some(function (t) { return t.name.toLowerCase() === qLower; });
     var nameLike = /^[A-Za-z][A-Za-z. -]{1,79}$/.test(q.trim());
-    var createOpt = !hasSpace && q && nameLike && !exact
+    // 种级联里同样提供建号选项：cf. / aff. 形式与未列入前 25 条的种名都能登记
+    var createOpt = q && nameLike && !exact
       ? '<div class="opt place-new" data-new-taxon="1">＋ 建立工作编号「' + escHtml(q.trim()) + '」</div>'
       : '';
     var localHtml = list.map(function (t) { return '<div class="opt" data-slug="' + escHtml(t.slug) + '">' + fmtName(t) + '</div>'; }).join('');

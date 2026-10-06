@@ -104,15 +104,7 @@ export async function syncToGitHub(env: Env, label = ''): Promise<SyncResult> {
       (await all<{ public_id: string }>(db, 'SELECT public_id FROM synced_originals')).map((r) => r.public_id),
     );
     // 只加载「本次触发观察的、且尚未入库」的原图——已入库的重读会挤爆内存（1102 根源）
-    const syncOriginals = new Set<string>();
-    if (label && /^SFN-/.test(label)) {
-      const obsRow = await get<any>(db, 'SELECT id FROM observations WHERE public_id = ?', label);
-      if (obsRow) {
-        const rows = await all<{ public_id: string }>(db, 'SELECT public_id FROM media WHERE observation_id = ?', obsRow.id);
-        rows.forEach(function (r) { if (!syncedIds.has(r.public_id)) syncOriginals.add(r.public_id); });
-      }
-    }
-    let data = await collectExport({ ...env, DB: db }, { loadOriginalsFor: syncOriginals });
+    let data = await collectExport({ ...env, DB: db }, { loadOriginalsFor: new Set<string>() });
     await audit(env, 'system', 'github-sync', label || null, 'probe: collect done, originals=' + Object.keys(data.originals).length + ', memMB=' + Math.round((globalThis as any).performance?.memory?.usedJSHeapSize / 1048576 || 0));
     // 自愈：触发的观察若已发布但不在导出里（副本滞后），重试两次
     if (label && /^SFN-/.test(label)) {
@@ -121,7 +113,7 @@ export async function syncToGitHub(env: Env, label = ''): Promise<SyncResult> {
         try { present = JSON.parse(data.observationsJson).some(function (o: any) { return o.public_id === label; }); } catch (e) {}
         if (present) break;
         await new Promise(function (r) { setTimeout(r, 1500); });
-        data = await collectExport({ ...env, DB: db }, { loadOriginalsFor: syncOriginals });
+        data = await collectExport({ ...env, DB: db }, { loadOriginalsFor: new Set<string>() });
       }
     }
     const jsonFiles: { path: string; content: string }[] = [

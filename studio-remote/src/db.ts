@@ -11,6 +11,8 @@ export interface Env {
   GITHUB_TOKEN?: string;
   /** 天地图密钥：地图瓦片与逆地理（国内可达）；未配置时回退 OSM/Nominatim（海外可达） */
   TIANDITU_KEY?: string;
+  /** 媒体原图流端点的构建拉取令牌（原图含 GPS EXIF，须防公开爬取） */
+  MEDIA_TOKEN?: string;
 }
 
 export type Row = Record<string, any>;

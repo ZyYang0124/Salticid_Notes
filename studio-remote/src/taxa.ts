@@ -154,10 +154,12 @@ export type CreateTaxonResult =
  *  chineseName 语义与 renameWorkingTaxon 一致：null/undefined = 不动；空串 = 清空；非空 = 设置。 */
 export async function createWorkingTaxon(env: Env, rawName: string, actor: string, chineseName?: string | null): Promise<CreateTaxonResult> {
   const name = rawName.trim().replace(/\s+/g, ' ');
-  if (!NAME_RE.test(name)) {
+  // 学名规范：属名（首词）首字母必须大写——手输小写时自动纠正
+  const proper = name.charAt(0).toUpperCase() + name.slice(1);
+  if (!NAME_RE.test(proper)) {
     return { ok: false, status: 400, error: '工作编号需为字母开头的学名或编号（可含 cf. / aff. / sp. 等限定词）' };
   }
-  const slug = slugifyTaxonName(name);
+  const slug = slugifyTaxonName(proper);
   if (!slug) return { ok: false, status: 400, error: '无法从该名称生成稳定缩写' };
   if (staticSlugs.has(slug)) {
     return { ok: false, status: 409, error: '与正式类群重名，请在列表中直接选择' };
@@ -184,16 +186,16 @@ export async function createWorkingTaxon(env: Env, rawName: string, actor: strin
   }
   const cn = chineseName ? String(chineseName).trim().slice(0, 60) || null : null;
   // 单词名 = 属级鉴定（显示为 Genus sp.）；双名及以上 = 种级
-  const rank = name.indexOf(' ') === -1 ? 'genus' : 'species';
+  const rank = proper.indexOf(' ') === -1 ? 'genus' : 'species';
   await run(
     env.DB,
     'INSERT INTO working_taxa (slug, scientific_name, rank, status, chinese_name, created_by) VALUES (?,?,?,?,?,?)',
     slug,
-    name,
+    proper,
     rank,
     'working',
     cn,
     actor,
   );
-  return { ok: true, created: true, taxon: { slug, name, cn, rank, working: true } };
+  return { ok: true, created: true, taxon: { slug, name: proper, cn, rank, working: true } };
 }
