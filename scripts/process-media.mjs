@@ -55,28 +55,30 @@ async function main() {
   let count = 0;
   mkdirSync(dirname(MANIFEST_OUT), { recursive: true });
 
-  let skippedMissing = 0;
+  const fetchFailures = [];
   let fetchedMissing = 0;
   for (const m of allPublicMedia) {
     const src = resolve(ROOT, m.source_original);
     if (!existsSync(src)) {
       // 原图不在仓库：从 Studio 的 R2 流端点拉取（原图永久存 R2，仓库不再承担新原图）。
-      // 需要 Pages 构建环境变量 STUDIO_MEDIA_TOKEN（与 Worker 的 MEDIA_TOKEN 一致）。
+      // 需要构建环境变量 STUDIO_MEDIA_TOKEN（与 Studio Worker 的 secret MEDIA_TOKEN 一致）。
       const token = process.env.STUDIO_MEDIA_TOKEN;
-      if (!token) {
-        console.warn(`[media] 原图缺失且未配置 STUDIO_MEDIA_TOKEN，跳过：${m.source_original}`);
-        skippedMissing += 1;
-        continue;
-      }
-      const url = `https://studio.salticidnotes.cn/studio/media-original/${m.id}?token=${encodeURIComponent(token)}`;
+      const url = `https://studio.salticidnotes.cn/studio/media-original/${m.id}?token=${encodeURIComponent(token ?? '')}`;
       try {
-        const buf = Buffer.from(await (await fetch(url)).arrayBuffer());
+        if (!token) throw new Error('未配置构建环境变量 STUDIO_MEDIA_TOKEN');
+        const res = await fetch(url);
+        const buf = Buffer.from(await res.arrayBuffer());
+        // 只认真图：端点被会话中间件拦回登录页时响应是 HTML，写盘即成伪 JPEG
+        const isJpeg = buf[0] === 0xff && buf[1] === 0xd8 && buf[2] === 0xff;
+        const isPng = buf.subarray(0, 8).toString('hex') === '89504e470d0a1a0a';
+        if (!res.ok || (!isJpeg && !isPng)) {
+          throw new Error(`HTTP ${res.status}、${buf.length}B、响应不是图片（token 无效或被鉴权拦截？）`);
+        }
         mkdirSync(dirname(src), { recursive: true });
         writeFileSync(src, buf);
         fetchedMissing += 1;
       } catch (e) {
-        console.warn(`[media] 原图拉取失败，跳过：${m.source_original}（${e.message}）`);
-        skippedMissing += 1;
+        fetchFailures.push(`${m.source_original} — ${e.message}`);
         continue;
       }
     }
@@ -123,12 +125,23 @@ async function main() {
     if (check.exif) throw new Error(`派生图 ${m.id} 仍含 EXIF——隐私检查失败`);
   }
 
+  if (fetchFailures.length) {
+    console.error(`\n[media] ${fetchFailures.length} 张公开原图无法取得，构建中止（避免上线缺图产物）：`);
+    for (const f of fetchFailures) console.error(`  · ${f}`);
+    console.error(`排查顺序：
+  1) Studio Worker 的 secret：cd studio-remote && npx wrangler secret put MEDIA_TOKEN
+  2) 公开站构建环境变量 STUDIO_MEDIA_TOKEN 与之一致（Cloudflare → salticid-notes → Settings → Environment variables）
+  3) 自检应返回 200 图片而非 302 登录页：
+     curl -sI "https://studio.salticidnotes.cn/studio/media-original/SN-2026-00001?token=<MEDIA_TOKEN>"`);
+    process.exit(1);
+  }
+
   // v2 清单（构建期由 src/lib 静态导入；Worker 运行时零文件系统依赖）
   writeFileSync(MANIFEST_OUT, JSON.stringify(manifest, null, 2));
   // 旧清单（兼容 /media/derivatives/manifest.json 引用者）
   writeFileSync(LEGACY_MANIFEST, JSON.stringify(manifest, null, 2));
   console.log(
-    `已生成 ${count} 张多格式派生图（缺失原图跳过 ${skippedMissing}，自 R2 补拉 ${fetchedMissing}）（${Object.keys(manifest).length}/${allPublicMedia.length} 个媒体，其余为非公开记录）。原图未做任何修改。`,
+    `已生成 ${count} 张多格式派生图（自 R2 补拉原图 ${fetchedMissing} 张）（${Object.keys(manifest).length}/${allPublicMedia.length} 个媒体，其余为非公开记录）。原图未做任何修改。`,
   );
 }
 
