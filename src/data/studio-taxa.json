@@ -99,17 +99,6 @@
     "personal_note": null
   },
   {
-    "id": "tax-wt-synagelides",
-    "rank": "genus",
-    "scientific_name": "Synagelides",
-    "authorship": null,
-    "chinese_name": null,
-    "parent_id": null,
-    "status": "working",
-    "slug": "synagelides",
-    "personal_note": null
-  },
-  {
     "id": "tax-wt-synagelides-platnicki",
     "rank": "species",
     "scientific_name": "Synagelides platnicki",
