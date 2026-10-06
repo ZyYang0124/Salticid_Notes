@@ -195,7 +195,7 @@ export async function suggestSpecies(env: Env, genus: string): Promise<SpeciesSu
       .filter((m) => m[1].toLowerCase() === genus.toLowerCase())
       .map((m) => ({ epithet: m[2], status: m[3] }));
     for (const c of combos) if (!seen.has(c.epithet)) seen.set(c.epithet, c);
-    const hasNext = new RegExp(`search\\?searchType=genus&query=[^"]*page=${page + 1}`).test(html);
+    const hasNext = html.includes(`page=${page + 1}`);
     if (!combos.length || !hasNext) break;
     page += 1;
   }
