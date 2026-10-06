@@ -126,6 +126,10 @@ app.get('/studio-login.js', (c) => c.body(LOGIN_SCRIPT, 200, { 'Content-Type': '
 // ---------- R2 派生图（Studio 内部展示用；公开站仍由构建管线产出自己的派生图） ----------
 
 app.get('/media/derivatives/*', async (c) => {
+  // 文件名带 SN 编号、可枚举，一律要求登录会话或构建 token
+  const token = c.env.MEDIA_TOKEN as string | undefined;
+  const tokenOk = Boolean(token) && c.req.query('token') === token;
+  if (!tokenOk && !(await auth(c))) return c.text('Forbidden', 403);
   const key = c.req.path.replace('/media/derivatives/', '');
   if (!/^[\w.-]+$/.test(key)) return c.text('Bad Request', 400);
   const obj = await c.env.MEDIA.get(`derivatives/${key}`);
