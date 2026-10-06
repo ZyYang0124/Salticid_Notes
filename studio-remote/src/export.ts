@@ -17,7 +17,7 @@ const README = `跳蛛观察志 · Field Studio 导出包
   studio-media.json            → src/data/studio-media.json
   studio-identifications.json  → src/data/studio-identifications.json
   studio-posts.json            → src/data/studio-posts.json
-  originals/                   → media/originals/（新增编号的原图，已存在的编号直接覆盖同名新文件即可）
+  原图不在导出内——永久存于 R2，公开站构建时经 Studio 流端点拉取。
 
 步骤：
   1. 把上述文件放入仓库对应位置；
@@ -43,18 +43,16 @@ export interface ExportData {
   mediaJson: string;
   identificationsJson: string;
   postsJson: string;
-  /** key 形如 originals/SFN-M-000001.jpg */
-  originals: Record<string, Uint8Array>;
 }
 
-export async function collectExport(env: Env, opts?: { loadOriginalsFor?: Set<string> }): Promise<ExportData> {
+/** 已发布内容的纯 JSON 快照。原图不进 Worker：大图 base64 曾把同步挤爆（1102），由构建管线经流端点从 R2 拉取。 */
+export async function collectExport(env: Env): Promise<ExportData> {
   const observations = await all(env.DB, "SELECT * FROM observations WHERE status = 'published' AND visibility = 'public' ORDER BY public_id");
   const wtBySlug = new Map((await workingTaxaRows(env)).map((t) => [t.slug, t]));
   const referencedWorking = new Map<string, WorkingTaxonRow>();
 
   const mediaOut: unknown[] = [];
   const identificationsOut: unknown[] = [];
-  const originalFiles: Record<string, Uint8Array> = {};
   const exportedMediaIds = new Set<string>();
 
   // 观察归属：按创建者邮箱映射稳定档案；未知邮箱回落站长档案
@@ -83,12 +81,6 @@ export async function collectExport(env: Env, opts?: { loadOriginalsFor?: Set<st
         license: m.license,
         visibility: 'public',
       });
-      // 原图只读取指定集合内的照片（同步时仅传本次触发观察的新图）；
-      // 其余照片已在仓库，重复读取会挤爆 Worker 内存（1102 根源）
-      if (opts?.loadOriginalsFor && opts.loadOriginalsFor.has(m.public_id)) {
-        const obj = await env.MEDIA.get(`originals/${m.public_id}${m.orig_ext}`);
-        if (obj) originalFiles[`originals/${m.public_id}${m.orig_ext}`] = new Uint8Array(await obj.arrayBuffer());
-      }
     }
     const idn = await get<any>(env.DB, 'SELECT * FROM identifications WHERE observation_id = ? AND is_current = 1 LIMIT 1', o.id);
     if (idn && idn.taxon_slug) {
@@ -190,12 +182,6 @@ export async function collectExport(env: Env, opts?: { loadOriginalsFor?: Set<st
         visibility: 'public',
       });
       exportedMediaIds.add(pid);
-      // 原图只读取指定集合内的照片（同步时仅传本次触发观察的新图）；
-      // 其余照片已在仓库，重复读取会挤爆 Worker 内存（1102 根源）
-      if (opts?.loadOriginalsFor && opts.loadOriginalsFor.has(m.public_id)) {
-        const obj = await env.MEDIA.get(`originals/${m.public_id}${m.orig_ext}`);
-        if (obj) originalFiles[`originals/${m.public_id}${m.orig_ext}`] = new Uint8Array(await obj.arrayBuffer());
-      }
     }
     // 封面：posts.cover_media_id → 媒体稳定编号（公开站 postCover 依赖此字段）
     const coverRow = p.cover_media_id
@@ -263,8 +249,6 @@ export async function collectExport(env: Env, opts?: { loadOriginalsFor?: Set<st
           visibility: 'public',
         });
         exportedMediaIds.add(m.public_id);
-        const obj = await env.MEDIA.get(`originals/${m.public_id}${m.orig_ext}`);
-        if (obj) originalFiles[`originals/${m.public_id}${m.orig_ext}`] = new Uint8Array(await obj.arrayBuffer());
       }
     }
     // slug：手写档案里有自己的 slug；新档案由档案 id 派生（prof-yi → yi），否则伙伴页会过滤掉
@@ -303,7 +287,6 @@ export async function collectExport(env: Env, opts?: { loadOriginalsFor?: Set<st
     mediaJson: j(mediaOut),
     identificationsJson: j(identificationsOut),
     postsJson: j(postsOut),
-    originals: originalFiles,
   };
 }
 
@@ -321,6 +304,5 @@ export async function buildExportZip(env: Env): Promise<Uint8Array> {
     'studio-media.json': u8(data.mediaJson),
     'studio-identifications.json': u8(data.identificationsJson),
     'studio-posts.json': u8(data.postsJson),
-    ...Object.fromEntries(Object.entries(data.originals).map(([k, v]) => [k, v])),
   });
 }
