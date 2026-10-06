@@ -110,6 +110,17 @@
     "personal_note": null
   },
   {
+    "id": "tax-wt-synagelides-platnicki",
+    "rank": "species",
+    "scientific_name": "Synagelides platnicki",
+    "authorship": null,
+    "chinese_name": "普氏合跳蛛",
+    "parent_id": null,
+    "status": "working",
+    "slug": "synagelides-platnicki",
+    "personal_note": null
+  },
+  {
     "id": "tax-wt-synagelides-yunnan",
     "rank": "species",
     "scientific_name": "Synagelides yunnan",

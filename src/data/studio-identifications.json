@@ -132,10 +132,10 @@
     "is_current": true
   },
   {
-    "id": "studio-192",
+    "id": "studio-203",
     "observation_id": "studio-42",
-    "taxon_id": "tax-wt-synagelides",
-    "display_identification": "Synagelides sp.",
+    "taxon_id": "tax-wt-synagelides-platnicki",
+    "display_identification": "Synagelides platnicki",
     "identified_by_profile_id": null,
     "identified_by_text": "Nyar",
     "identified_at": "2026-10-06",
