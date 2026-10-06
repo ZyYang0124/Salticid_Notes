@@ -464,14 +464,6 @@ app.post('/studio/observations/:public_id/photos', async (c) => {
       saved.publicId,
     );
     added.push(saved.publicId);
-    if (g.original) {
-      c.executionCtx.waitUntil((async () => {
-        const origObj = await c.env.MEDIA.get(`originals/${saved.publicId}${saved.origExt}`);
-        if (origObj) {
-          await backupOriginalToGitHub(c.env, saved.publicId, new Uint8Array(await origObj.arrayBuffer()), `${saved.publicId}${saved.origExt}`);
-        }
-      })());
-    }
   }
   await audit(c.env, u.display_name, 'media', obs.public_id, 'upload', { added });
   return c.json({ ok: true, added });
