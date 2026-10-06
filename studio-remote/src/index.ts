@@ -43,8 +43,16 @@ async function auth(c: any): Promise<StudioUser | null> {
 
 // 受保护路径的认证中间件：未登录 → 302 登录页（中间件返回 Response 可短路）
 const PUBLIC_PATHS = new Set(['/studio/login']);
-function isPublicPath(path: string): boolean {
-  return PUBLIC_PATHS.has(path) || path.startsWith('/studio/login/') || path.startsWith('/studio.css') || path.startsWith('/studio-editor.js') || path.startsWith('/studio-note-editor.js') || path.startsWith('/studio-import.js');
+/** 构建管线取原图的 token 通道：原图含 GPS EXIF，token 缺失或不符一律不放行 */
+function isMediaStreamAuthorized(c: any): boolean {
+  if (!String(c.req.path).startsWith('/studio/media-original/')) return false;
+  const expected = c.env.MEDIA_TOKEN as string | undefined;
+  if (!expected) return false;
+  return new URL(c.req.url).searchParams.get('token') === expected;
+}
+function isPublicPath(c: any): boolean {
+  const path: string = c.req.path;
+  return PUBLIC_PATHS.has(path) || path.startsWith('/studio/login/') || path.startsWith('/studio.css') || path.startsWith('/studio-editor.js') || path.startsWith('/studio-note-editor.js') || path.startsWith('/studio-import.js') || isMediaStreamAuthorized(c);
 }
 function deny(c: any): Response {
   // JSON API 返回 401，页面路径 302 到登录页
@@ -53,14 +61,14 @@ function deny(c: any): Response {
     : c.redirect('/studio/login');
 }
 app.use('/studio', async (c, next) => {
-  if (isPublicPath(c.req.path)) return next();
+  if (isPublicPath(c)) return next();
   const user = await auth(c);
   if (!user) return deny(c);
   c.set('user', user);
   return next();
 });
 app.use('/studio/*', async (c, next) => {
-  if (isPublicPath(c.req.path)) return next();
+  if (isPublicPath(c)) return next();
   const user = await auth(c);
   if (!user) return deny(c);
   c.set('user', user);
@@ -1218,9 +1226,7 @@ app.get('/studio/api/regeo', async (c) => {
 
 // 媒体原图流（构建管线拉取用；token 鉴权——原图含 GPS EXIF，不可公开）
 app.get('/studio/media-original/:publicId', async (c) => {
-  if (c.env.MEDIA_TOKEN && c.req.query('token') !== c.env.MEDIA_TOKEN) {
-    return c.text('Forbidden', 403);
-  }
+  if (!isMediaStreamAuthorized(c)) return c.text('Forbidden', 403);
   const publicId = c.req.param('publicId');
   if (!/^SN-\d{4}-\d{4,5}$/.test(publicId)) return c.text('Bad id', 400);
   const row = await get<any>(c.env.DB, 'SELECT orig_ext FROM media WHERE public_id = ?', publicId);
@@ -1228,8 +1234,9 @@ app.get('/studio/media-original/:publicId', async (c) => {
   const obj = await c.env.MEDIA.get(`originals/${publicId}${ext}`);
   if (!obj) return c.text('Not found', 404);
   return c.body(obj.body, 200, {
-    'Content-Type': 'image/jpeg',
-    'Cache-Control': 'public, max-age=604800, immutable',
+    'Content-Type': ext === '.png' ? 'image/png' : 'image/jpeg',
+    // 原图含 GPS EXIF，只供构建一次性拉取，不得被边缘缓存
+    'Cache-Control': 'private, no-store',
   });
 });
 
