@@ -77,14 +77,14 @@
     "personal_note": null
   },
   {
-    "id": "tax-wt-protaeus",
-    "rank": "genus",
-    "scientific_name": "Protaeus",
+    "id": "tax-wt-protaeus-nyarlathotep",
+    "rank": "species",
+    "scientific_name": "Protaeus nyarlathotep",
     "authorship": null,
     "chinese_name": null,
     "parent_id": null,
     "status": "working",
-    "slug": "protaeus",
+    "slug": "protaeus-nyarlathotep",
     "personal_note": null
   },
   {

@@ -96,13 +96,13 @@
     "is_current": true
   },
   {
-    "id": "studio-191",
+    "id": "studio-214",
     "observation_id": "studio-39",
-    "taxon_id": "tax-wt-protaeus",
-    "display_identification": "protaeus sp.",
+    "taxon_id": "tax-wt-protaeus-nyarlathotep",
+    "display_identification": "Protaeus nyarlathotep",
     "identified_by_profile_id": null,
     "identified_by_text": "Nyar",
-    "identified_at": "2026-10-06",
+    "identified_at": "2026-10-08",
     "evidence": "field",
     "remarks": null,
     "is_current": true
