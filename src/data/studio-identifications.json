@@ -166,17 +166,5 @@
     "evidence": "field",
     "remarks": null,
     "is_current": true
-  },
-  {
-    "id": "studio-208",
-    "observation_id": "studio-45",
-    "taxon_id": "tax-wt-spartaeus",
-    "display_identification": "Spartaeus sp.",
-    "identified_by_profile_id": null,
-    "identified_by_text": "Nyar",
-    "identified_at": "2026-10-06",
-    "evidence": "field",
-    "remarks": null,
-    "is_current": true
   }
 ]

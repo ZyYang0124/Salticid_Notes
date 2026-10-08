@@ -166,17 +166,5 @@
     "latitude": 21.5284,
     "longitude": 101.4917,
     "elevation_m": null
-  },
-  {
-    "id": "loc-studio-45",
-    "country_code": "",
-    "country_name": "中国",
-    "admin1": "云南省",
-    "admin2": "澜沧拉祜族自治县",
-    "locality": "洛勐线南段",
-    "site_name": null,
-    "latitude": 22.0748,
-    "longitude": 99.8822,
-    "elevation_m": null
   }
 ]

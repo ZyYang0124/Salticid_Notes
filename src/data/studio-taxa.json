@@ -119,16 +119,5 @@
     "status": "working",
     "slug": "synagelides-yunnan",
     "personal_note": null
-  },
-  {
-    "id": "tax-wt-spartaeus",
-    "rank": "genus",
-    "scientific_name": "Spartaeus",
-    "authorship": null,
-    "chinese_name": null,
-    "parent_id": null,
-    "status": "working",
-    "slug": "spartaeus",
-    "personal_note": null
   }
 ]
