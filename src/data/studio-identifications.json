@@ -166,5 +166,17 @@
     "evidence": "field",
     "remarks": null,
     "is_current": true
+  },
+  {
+    "id": "studio-218",
+    "observation_id": "studio-46",
+    "taxon_id": "tax-salticidae",
+    "display_identification": "Salticidae sp.",
+    "identified_by_profile_id": null,
+    "identified_by_text": "哈姆",
+    "identified_at": "2026-11-03",
+    "evidence": "field",
+    "remarks": null,
+    "is_current": true
   }
 ]

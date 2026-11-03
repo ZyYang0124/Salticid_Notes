@@ -166,5 +166,17 @@
     "latitude": 21.5284,
     "longitude": 101.4917,
     "elevation_m": null
+  },
+  {
+    "id": "loc-studio-46",
+    "country_code": "",
+    "country_name": "中国",
+    "admin1": "广东省",
+    "admin2": "阳春市",
+    "locality": "Y150",
+    "site_name": "高村",
+    "latitude": 22.371933,
+    "longitude": 111.941141,
+    "elevation_m": null
   }
 ]

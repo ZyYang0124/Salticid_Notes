@@ -572,5 +572,33 @@
     "elevation_m": null,
     "description": null,
     "merged_into_id": null
+  },
+  {
+    "id": "place-50",
+    "name": "Y167",
+    "country": "中国",
+    "admin1": "广东省",
+    "admin2": "阳春市",
+    "locality": "Y167",
+    "site_name": "",
+    "latitude": 22.223927,
+    "longitude": 111.867682,
+    "elevation_m": null,
+    "description": null,
+    "merged_into_id": null
+  },
+  {
+    "id": "place-51",
+    "name": "Y150",
+    "country": "中国",
+    "admin1": "广东省",
+    "admin2": "阳春市",
+    "locality": "Y150",
+    "site_name": "",
+    "latitude": 22.371933,
+    "longitude": 111.941141,
+    "elevation_m": null,
+    "description": null,
+    "merged_into_id": null
   }
 ]
