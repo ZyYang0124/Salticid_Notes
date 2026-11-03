@@ -600,5 +600,47 @@
     "elevation_m": null,
     "description": null,
     "merged_into_id": null
+  },
+  {
+    "id": "place-52",
+    "name": "日新路",
+    "country": "中国",
+    "admin1": "广东省",
+    "admin2": "中山市",
+    "locality": "日新路",
+    "site_name": "",
+    "latitude": 23.356881,
+    "longitude": 113.516779,
+    "elevation_m": null,
+    "description": null,
+    "merged_into_id": null
+  },
+  {
+    "id": "place-53",
+    "name": "Y108",
+    "country": "中国",
+    "admin1": "广东省",
+    "admin2": "增城区",
+    "locality": "Y108",
+    "site_name": "",
+    "latitude": 23.563358,
+    "longitude": 113.852005,
+    "elevation_m": null,
+    "description": null,
+    "merged_into_id": null
+  },
+  {
+    "id": "place-54",
+    "name": "锦村茅坪街",
+    "country": "中国",
+    "admin1": "广东省",
+    "admin2": "从化区",
+    "locality": "锦村茅坪街",
+    "site_name": "",
+    "latitude": 23.694577,
+    "longitude": 113.843983,
+    "elevation_m": null,
+    "description": null,
+    "merged_into_id": null
   }
 ]

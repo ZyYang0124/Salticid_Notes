@@ -119,5 +119,16 @@
     "status": "working",
     "slug": "synagelides-yunnan",
     "personal_note": null
+  },
+  {
+    "id": "tax-wt-ligdus",
+    "rank": "genus",
+    "scientific_name": "Ligdus",
+    "authorship": null,
+    "chinese_name": null,
+    "parent_id": null,
+    "status": "working",
+    "slug": "ligdus",
+    "personal_note": null
   }
 ]

@@ -178,5 +178,17 @@
     "evidence": "field",
     "remarks": null,
     "is_current": true
+  },
+  {
+    "id": "studio-220",
+    "observation_id": "studio-47",
+    "taxon_id": "tax-wt-ligdus",
+    "display_identification": "Ligdus sp.",
+    "identified_by_profile_id": null,
+    "identified_by_text": "哈姆",
+    "identified_at": "2026-11-03",
+    "evidence": "field",
+    "remarks": null,
+    "is_current": true
   }
 ]
