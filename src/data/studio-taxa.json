@@ -130,5 +130,16 @@
     "status": "working",
     "slug": "ligdus",
     "personal_note": null
+  },
+  {
+    "id": "tax-wt-siler-hanoicus",
+    "rank": "species",
+    "scientific_name": "Siler hanoicus",
+    "authorship": null,
+    "chinese_name": null,
+    "parent_id": null,
+    "status": "working",
+    "slug": "siler-hanoicus",
+    "personal_note": null
   }
 ]

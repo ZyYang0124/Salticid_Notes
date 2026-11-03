@@ -334,5 +334,26 @@
     "field_note": "",
     "status": "published",
     "visibility": "public"
+  },
+  {
+    "id": "studio-48",
+    "public_id": "SFN-2026-000057",
+    "place_id": "place-55",
+    "created_by": "prof-hamu",
+    "observer": "prof-hamu",
+    "observed_at": "2025-12-07",
+    "observed_at_precision": "day",
+    "location_id": "loc-studio-48",
+    "sex": "unknown",
+    "life_stage": "unknown",
+    "count": null,
+    "habitat": null,
+    "microhabitat": null,
+    "behavior": null,
+    "plant": null,
+    "weather": null,
+    "field_note": "",
+    "status": "published",
+    "visibility": "public"
   }
 ]
