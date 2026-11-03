@@ -656,5 +656,61 @@
     "elevation_m": null,
     "description": null,
     "merged_into_id": null
+  },
+  {
+    "id": "place-56",
+    "name": "昌韶高速神龙高架四G6011",
+    "country": "中国",
+    "admin1": "江西省",
+    "admin2": "宁都县",
+    "locality": "昌韶高速神龙高架四G6011",
+    "site_name": "",
+    "latitude": 25.24569,
+    "longitude": 115.917199,
+    "elevation_m": null,
+    "description": null,
+    "merged_into_id": null
+  },
+  {
+    "id": "place-57",
+    "name": "艺泓路",
+    "country": "中国",
+    "admin1": "广东省",
+    "admin2": "海珠区",
+    "locality": "艺泓路",
+    "site_name": "",
+    "latitude": 23.100955,
+    "longitude": 113.326092,
+    "elevation_m": null,
+    "description": null,
+    "merged_into_id": null
+  },
+  {
+    "id": "place-58",
+    "name": "站塘－紫金山X506",
+    "country": "中国",
+    "admin1": "江西省",
+    "admin2": "会昌县",
+    "locality": "站塘－紫金山X506",
+    "site_name": "",
+    "latitude": 23.100955,
+    "longitude": 113.326092,
+    "elevation_m": null,
+    "description": null,
+    "merged_into_id": null
+  },
+  {
+    "id": "place-59",
+    "name": "S119",
+    "country": "中国",
+    "admin1": "广东省",
+    "admin2": "增城区",
+    "locality": "S119",
+    "site_name": "",
+    "latitude": 23.509693,
+    "longitude": 113.891291,
+    "elevation_m": null,
+    "description": null,
+    "merged_into_id": null
   }
 ]

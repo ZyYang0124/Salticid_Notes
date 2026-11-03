@@ -202,5 +202,17 @@
     "evidence": "field",
     "remarks": null,
     "is_current": true
+  },
+  {
+    "id": "studio-224",
+    "observation_id": "studio-49",
+    "taxon_id": "tax-wt-myrmarachne",
+    "display_identification": "Myrmarachne sp.",
+    "identified_by_profile_id": null,
+    "identified_by_text": "哈姆",
+    "identified_at": "2026-11-03",
+    "evidence": "field",
+    "remarks": null,
+    "is_current": true
   }
 ]
