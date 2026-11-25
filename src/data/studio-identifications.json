@@ -226,5 +226,17 @@
     "evidence": "field",
     "remarks": null,
     "is_current": true
+  },
+  {
+    "id": "studio-250",
+    "observation_id": "studio-51",
+    "taxon_id": "tax-wt-anarrhotus-fossulatus",
+    "display_identification": "Anarrhotus fossulatus",
+    "identified_by_profile_id": null,
+    "identified_by_text": "Nyar",
+    "identified_at": "2026-11-25",
+    "evidence": "field",
+    "remarks": null,
+    "is_current": true
   }
 ]
