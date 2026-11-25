@@ -214,5 +214,17 @@
     "latitude": 23.509693,
     "longitude": 113.891291,
     "elevation_m": null
+  },
+  {
+    "id": "loc-studio-50",
+    "country_code": "",
+    "country_name": "中国",
+    "admin1": "云南省",
+    "admin2": "勐腊县",
+    "locality": "勐养镇",
+    "site_name": "野象谷",
+    "latitude": 22.176809,
+    "longitude": 101.276903,
+    "elevation_m": null
   }
 ]

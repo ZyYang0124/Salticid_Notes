@@ -152,5 +152,16 @@
     "status": "working",
     "slug": "myrmarachne",
     "personal_note": null
+  },
+  {
+    "id": "tax-wt-anarrhotus-fossulatus",
+    "rank": "species",
+    "scientific_name": "Anarrhotus fossulatus",
+    "authorship": null,
+    "chinese_name": null,
+    "parent_id": null,
+    "status": "working",
+    "slug": "anarrhotus-fossulatus",
+    "personal_note": null
   }
 ]

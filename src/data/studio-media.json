@@ -714,6 +714,48 @@
     "visibility": "public"
   },
   {
+    "id": "SN-2026-00092",
+    "public_id": "SN-2026-00092",
+    "observation_id": "studio-50",
+    "source_original": "media/originals/SN-2026-00092.png",
+    "view_type": "live_frontal",
+    "caption": null,
+    "sort_order": 1,
+    "is_cover": true,
+    "photographer_profile_id": null,
+    "photographer_name": "Nyar",
+    "license": "all_rights_reserved",
+    "visibility": "public"
+  },
+  {
+    "id": "SN-2026-00093",
+    "public_id": "SN-2026-00093",
+    "observation_id": "studio-50",
+    "source_original": "media/originals/SN-2026-00093.png",
+    "view_type": "live_lateral",
+    "caption": null,
+    "sort_order": 2,
+    "is_cover": false,
+    "photographer_profile_id": null,
+    "photographer_name": "Nyar",
+    "license": "all_rights_reserved",
+    "visibility": "public"
+  },
+  {
+    "id": "SN-2026-00094",
+    "public_id": "SN-2026-00094",
+    "observation_id": "studio-50",
+    "source_original": "media/originals/SN-2026-00094.png",
+    "view_type": "live_dorsal",
+    "caption": null,
+    "sort_order": 3,
+    "is_cover": false,
+    "photographer_profile_id": null,
+    "photographer_name": "Nyar",
+    "license": "all_rights_reserved",
+    "visibility": "public"
+  },
+  {
     "id": "SN-2026-00031",
     "public_id": "SN-2026-00031",
     "observation_id": null,
